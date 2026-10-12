@@ -11,6 +11,20 @@ from package import ROMS, digest, write_json, validate_core_identity, validate_i
 
 ROOT = Path(__file__).resolve().parents[1]
 
+# APF permits at most sixteen display modes per core entry. Both entries use
+# the same bitstream and common ROM assets; Normal remains implicit.
+DISPLAY_PROFILES = {
+    'main': (0x10, 0x30, 0x31, 0x32, 0x40, 0x41, 0x42, 0x51,
+             0x52, 0x62, 0x63, 0x71, 0x72, 0x81, 0x82, 0xE0),
+    'extra': (0x10, 0x20, 0x21, 0x22, 0x23, 0x30, 0x40, 0x61, 0xE1),
+}
+
+
+def video_definition(template, profile):
+    return {'video': {**template['video'],
+        'display_modes': [{'id': f'0x{mode:02X}'} for mode in DISPLAY_PROFILES[profile]],
+        'defaults': {**template['video'].get('defaults', {}), 'sharpness': 3}}}
+
 def fpga_verification(experimental):
     outputs = ROOT / 'build/fpga/native/fpga/output_files'
     rbf_hash = digest(outputs / 'ap_core.rbf', 'sha256')
@@ -73,12 +87,14 @@ def main():
     definition = json.loads((template / 'core.json').read_text())
     definition['core']['metadata'].update(
         platform_ids=['pdc'], shortname=shortname, author='Local', url='',
-        description='Native PDC full-speed candidate' if args.experimental else 'Native PDC30 / PDC100 FPGA core',
-        version='0.1.0-sprite-groups' if args.experimental else '0.1.0-native-preview', date_release='2026-10-12')
+        description='PDC30 / PDC100: color LCD and CRT displays',
+        version='0.1.0-display-priority' if args.experimental else '0.1.0-native-preview', date_release='2026-10-12')
     definition['core']['framework']['dock']['supported'] = False
     write_json(core / 'core.json', definition)
     for name in ('audio.json', 'video.json', 'interact.json', 'variants.json'):
         shutil.copy2(template / name, core / name)
+    video = json.loads((template / 'video.json').read_text())
+    write_json(core / 'video.json', video_definition(video, 'main'))
     if args.experimental:
         write_json(core / 'interact.json', {'interact': {'magic': 'APF_VER_1',
             'variables': [{'name': 'S', 'id': 1, 'type': 'number_u32',
@@ -144,16 +160,29 @@ def main():
         (ROOT / 'third_party/pocket/README.md', 'memory-controller-changes.md')):
         shutil.copy2(source, notices / name)
     shutil.copy2(ROOT / 'docs/native-fpga.md', out / ('README-FPGA-EXPERIMENTAL.md' if args.experimental else 'README-FPGA.md'))
-    validate_core_identity(core)
-    validate_input(json.loads((core / 'input.json').read_text()))
-    for name in ('core', 'audio', 'video', 'data', 'input', 'interact', 'variants'):
-        definition = json.loads((core / f'{name}.json').read_text())
-        if definition[name]['magic'] != 'APF_VER_1':
-            raise ValueError(f'Invalid native core definition: {name}.json')
+    for name in ('native-refinements.md', 'native-full-speed-baseline.json'):
+        shutil.copy2(ROOT / 'docs' / name, out / name)
+    extra_id = core_id + 'Extra'
+    extra = out / 'Cores' / extra_id
+    shutil.copytree(core, extra)
+    definition = json.loads((extra / 'core.json').read_text())
+    definition['core']['metadata'].update(shortname=shortname + 'Extra',
+        description='PDC30 / PDC100: grayscale, NGP and fluorescent displays')
+    write_json(extra / 'core.json', definition)
+    write_json(extra / 'video.json', video_definition(video, 'extra'))
+    shutil.copytree(out / 'Assets/pdc' / core_id, out / 'Assets/pdc' / extra_id)
+    for entry in (core, extra):
+        validate_core_identity(entry)
+        validate_input(json.loads((entry / 'input.json').read_text()))
+        for name in ('core', 'audio', 'video', 'data', 'input', 'interact', 'variants'):
+            definition = json.loads((entry / f'{name}.json').read_text())
+            if definition[name]['magic'] != 'APF_VER_1':
+                raise ValueError(f'Invalid native core definition: {entry.name}/{name}.json')
     files = {p.relative_to(out).as_posix(): digest(p, 'sha256')
              for p in sorted(out.rglob('*')) if p.is_file()}
     write_json(out / ('native-experimental-manifest.json' if args.experimental else 'native-manifest.json'),
                {'hardware_verified': False, 'experimental': args.experimental,
+                'display_profiles': {core_id: 'main', extra_id: 'extra'},
                 'memory_check': {'bank_bytes': 8388608, 'passes': 2, 'pink_crc32': '0x0C1DC0F3', 'pdc100_crc32': '0xCCD6C6D3'},
                 'pacing_max_backlog_cycles': 131071, 'pacing_overflow_status_mask': '0x00008000',
                 'diagnostic_clock_khz': 98304, 'sdram_clock_khz': 49152, 'prior_full_system_test_clock_khz': 196608,

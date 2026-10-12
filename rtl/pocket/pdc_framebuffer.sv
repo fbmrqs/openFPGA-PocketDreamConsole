@@ -1,5 +1,7 @@
 module pdc_framebuffer (
-    input logic reset, system_clk, memory_clk, video_clk,
+    input logic reset, video_reset, system_clk, memory_clk, video_clk,
+    input logic grayscale,
+    output logic grayscale_active,
     input logic pixel_valid,
     input logic [8:0] pixel_x,
     input logic [7:0] pixel_y,
@@ -18,7 +20,9 @@ module pdc_framebuffer (
     logic reset_memory;
     pdc_reset_sync reset_memory_sync (.clk(memory_clk),.async_reset(reset),.reset(reset_memory));
     logic reset_video;
-    pdc_reset_sync reset_video_sync (.clk(video_clk),.async_reset(reset),.reset(reset_video));
+    pdc_reset_sync reset_video_sync (.clk(video_clk),.async_reset(video_reset),.reset(reset_video));
+    logic reset_stream;
+    pdc_reset_sync reset_stream_sync (.clk(video_clk),.async_reset(reset),.reset(reset_stream));
 
     logic [32:0] pixel_packet;
     logic pixel_full, pixel_empty, pixel_pop, pixel_available;
@@ -34,6 +38,12 @@ module pdc_framebuffer (
 
     logic [8:0] x_count, y_count;
     logic frame_toggle, active_delay, hs_delay, vs_delay;
+    (* altera_attribute = "-name SYNCHRONIZER_IDENTIFICATION FORCED_IF_ASYNCHRONOUS" *) logic [1:0] grayscale_sync;
+    wire [7:0] red={scan_data[14:10],scan_data[14:12]};
+    wire [7:0] green={scan_data[9:5],scan_data[9:7]};
+    wire [7:0] blue={scan_data[4:0],scan_data[4:2]};
+    // Integer luminance, with a power-of-two divisor and no multiplier.
+    wire [9:0] luminance={2'b0,red}+{1'b0,green,1'b0}+{2'b0,blue};
     logic scan_empty, scan_full, scan_valid, scan_push, visible, scan_reset;
     logic [14:0] scan_data, scan_input;
     logic [14:0] scan_level;
@@ -42,22 +52,29 @@ module pdc_framebuffer (
     assign visible=x_count>=10 && x_count<330 && y_count>=64 && y_count<304;
     pdc_async_fifo #(.WIDTH(15),.ADDRESS_BITS(14)) scanout (
         .reset(scan_reset),.write_clk(memory_clk),.write_en(scan_push),.write_data(scan_input),.full(scan_full),
-        .read_clk(video_clk),.read_en(visible && display_sync[1]),.read_data(scan_data),.read_valid(scan_valid),.empty(scan_empty),
+        .read_clk(video_clk),.read_en(visible && display_sync[1] && !reset_stream),.read_data(scan_data),.read_valid(scan_valid),.empty(scan_empty),
         .write_level(scan_level),.read_level());
     always_ff @(posedge video_clk or posedge reset_video) begin
         if (reset_video) begin
             x_count<=0;y_count<=0;frame_toggle<=0;active_delay<=0;hs_delay<=0;vs_delay<=0;
             video_rgb<=0;video_de<=0;video_hs<=0;video_vs<=0;underflow<=0;display_sync<=0;
+            grayscale_sync<=0;grayscale_active<=0;
         end else begin
-            display_sync<={display_sync[0],display_valid};
+            if (reset_stream) begin display_sync<=0;underflow<=0;end
+            else begin
+                display_sync<={display_sync[0],display_valid};
+                if (visible && display_sync[1] && scan_empty) underflow<=1;
+            end
+            grayscale_sync<={grayscale_sync[0],grayscale};
+            grayscale_active<=grayscale_sync[1];
             if (x_count==399) begin x_count<=0;y_count<=y_count+9'd1;end
             else x_count<=x_count+9'd1;
             if (x_count==0 && y_count==0) frame_toggle<=!frame_toggle;
             hs_delay<=x_count==3;vs_delay<=x_count==0 && y_count==0;
-            active_delay<=visible && display_sync[1];
+            active_delay<=visible;
             video_de<=active_delay;video_hs<=hs_delay;video_vs<=vs_delay;video_rgb<=0;
-            if (active_delay && scan_valid) video_rgb<={scan_data[14:10],scan_data[14:12],scan_data[9:5],scan_data[9:7],scan_data[4:0],scan_data[4:2]};
-            if (visible && display_sync[1] && scan_empty) underflow<=1;
+            if (active_delay && scan_valid && display_sync[1] && !reset_stream)
+                video_rgb<=grayscale_sync[1] ? {3{luminance[9:2]}} : {red,green,blue};
         end
     end
 

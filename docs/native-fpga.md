@@ -6,8 +6,10 @@ in PDC30 Pink and PDC100. This is a hardware-confirmed gameplay milestone;
 exhaustive title coverage, long-duration stability, save states and sleep/resume
 remain outside the confirmed scope.
 
-The main project's RTL, reference sources, tests and FPGA tools now match the
-successful frozen `build/native-mmio-workspace`. Preserve that workspace and its
+The confirmed RTL, reference sources, tests and FPGA tools are frozen in
+`build/native-mmio-workspace`. The current source includes the subsequent
+[display and sprite refinements](native-refinements.md), which require fresh
+validation. Preserve the frozen workspace and its
 private package as the recovery baseline. The original slower playable builds
 remain preserved separately. [The baseline record](native-full-speed-baseline.json)
 contains bitstream hashes, validation receipt hashes, clocks and timing results.

@@ -123,6 +123,12 @@ for definition in 'pdc_audio pocket-audio pocket_audio' 'pdc_framebuffer framebu
 done
 for phase in 300000 600000 1200000 3000000 6000000; do build/rtl/framebuffer/Vpdc_framebuffer "$phase"; done
 build/rtl/framebuffer/Vpdc_framebuffer 600000 burst
+build/rtl/framebuffer/Vpdc_framebuffer 600000 grayscale
+verilator --binary --timing --top-module display_mode_tb -Wno-TIMESCALEMOD -Wno-PINMISSING -Wno-WIDTH -Wno-COMBDLY -Wno-MULTIDRIVEN -Wno-INITIALDLY -Wno-CASEX -Wno-CASEINCOMPLETE \
+  --Mdir build/rtl/display-mode .deps/core-template/src/fpga/apf/common.v \
+  third_party/pocket/pdc_bridge_cmd.v tests/rtl/display_mode_tb.sv \
+  > build/rtl/display-mode-build.log 2>&1
+build/rtl/display-mode/Vdisplay_mode_tb
 verilator --cc --exe --build -j 8 -MAKEFLAGS 'OPT_FAST=-O3' --top-module pocket_sdram_tb \
   -Wno-BLKSEQ -Wno-UNUSEDSIGNAL -Wno-PINMISSING -Wno-WIDTHEXPAND -Wno-COMBDLY -Wno-MULTIDRIVEN --Mdir build/rtl/pocket-sdram \
   -CFLAGS '-std=c++20 -O2' \

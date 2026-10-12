@@ -31,7 +31,7 @@ struct PocketOutputs {
         if(!reset && (audio.underflow || audio.overflow)) {
             std::fprintf(stderr,"Pocket audio starvation/overflow at frame %u: underflow=%u overflow=%u\n",frame,audio.underflow,audio.overflow);std::exit(1);
         }
-        fb.reset=reset;fb.pixel_valid=system.pixel_valid;
+        fb.reset=reset;fb.video_reset=system.reset;fb.grayscale=0;fb.pixel_valid=system.pixel_valid;
         fb.pixel_x=system.pixel_x;fb.pixel_y=system.pixel_y;fb.pixel_data=system.pixel_data;
         fb.system_clk=high;fb.eval();
         memory_phase+=266481580;

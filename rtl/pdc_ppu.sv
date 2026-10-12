@@ -71,12 +71,12 @@ module pdc_ppu (
     (* preserve, dont_retime *) state_t state;
     (* dont_retime *) state_t resume_state;
     logic [1:0] layer;
-    logic bg_index, blend_pass, object_sprite;
-    logic [7:0] sprite_passes;
-    logic [31:0] sprite_groups [0:7];
+    logic bg_index, object_sprite;
+    logic [3:0] sprite_passes;
+    logic [31:0] sprite_groups [0:3];
     wire [7:0] scanned_sprite = output_x[7:0]-8'd2;
     wire [8:0] next_sprite_group = {sprite_index[8:3],3'b000}+9'd8;
-    wire empty_sprite_group = !sprite_groups[{layer,blend_pass}][sprite_index[7:3]];
+    wire empty_sprite_group = !sprite_groups[layer][sprite_index[7:3]];
     logic [8:0] sprite_index, output_x;
     logic [7:0] screen_y;
     logic signed [11:0] screen_x, tile_x;
@@ -257,7 +257,7 @@ module pdc_ppu (
             2: sprite_inside = sprite_distance[9:4]==0 || &sprite_distance[9:4];
             3: sprite_inside = sprite_distance[9:5]==0 || &sprite_distance[9:5];
         endcase
-        skip_sprite = sprite_q0 == 0 || sprite_q3[13:12] != layer || sprite_q3[14] != blend_pass ||
+        skip_sprite = sprite_q0 == 0 || sprite_q3[13:12] != layer ||
             !sprite_inside;
         next_sprite_address=register_address[9:2];
         if (busy) begin
@@ -266,7 +266,7 @@ module pdc_ppu (
             if (state[$clog2(NEXT_OBJECT)] && bg_index) next_sprite_address=1;
             if (state[$clog2(TILE_NEXT)] && object_sprite) next_sprite_address=sprite_index[7:0]+8'd2;
             if (state[$clog2(SPRITE_START)])
-                next_sprite_address=!sprite_enabled || sprite_index==256 || !sprite_passes[{layer,blend_pass}] ? 8'd0 :
+                next_sprite_address=!sprite_enabled || sprite_index==256 || !sprite_passes[layer] ? 8'd0 :
                     empty_sprite_group ? next_sprite_group[7:0] : sprite_index[7:0]+8'd2;
             if (state[$clog2(SPRITE_RESTART)]) next_sprite_address=sprite_index[7:0]+8'd1;
         end
@@ -384,9 +384,9 @@ module pdc_ppu (
             sprite_segment <= 0; compress_amount <= 9'h20; compress_offset <= 0;
             fade <= 0; blend_level <= 0; sprite_enabled <= 0; stn_control <= 0;
             for (k = 0; k < 7; k = k + 1) begin bg[0][k] <= 0; bg[1][k] <= 0; end
-            layer = 0; bg_index = 0; blend_pass = 0; object_sprite <= 0;
+            layer = 0; bg_index = 0; object_sprite <= 0;
             sprite_passes <= 0;rom_buffer_valid<=0;rom_buffer_address<=0;rom_buffer<='0;
-            for (k=0;k<8;k=k+1) sprite_groups[k]<=0;
+            for (k=0;k<4;k=k+1) sprite_groups[k]<=0;
             sprite_index <= 0; output_x = 0; screen_y = 0; screen_x <= 0; tile_x = 0;
             tile_width = 0; tile_height = 0; width_shift = 0; height_shift = 0; scroll_x = 0; map_y <= 0; tile_position = 0;
             tile_number = 0; tile_attr = 0; tile_palette = 0; hflip <= 0; vflip = 0;
@@ -427,15 +427,15 @@ module pdc_ppu (
             unique case (1'b1)
                 state[$clog2(IDLE)]: if (start_line) begin
                     sprite_passes <= 0;rom_buffer_valid<=0;
-                    for (k=0;k<8;k=k+1) sprite_groups[k]<=0;
+                    for (k=0;k<4;k=k+1) sprite_groups[k]<=0;
                     busy<= 1; screen_y = line; output_x = 0; state <= CLEAR_LINE;
-                    layer = 0; bg_index = 0; blend_pass = 0; object_sprite <= 0; sprite_index <= 0;
+                    layer = 0; bg_index = 0; object_sprite <= 0; sprite_index <= 0;
                 end
                 state[$clog2(CLEAR_LINE)]: begin
                     // Scan the two-clock sprite RAM while clearing the line.
                     if (output_x>=2 && output_x<258 && sprite_q0!=0 && sprite_inside) begin
-                        sprite_passes[{sprite_q3[13:12],sprite_q3[14]}] <= 1;
-                        sprite_groups[{sprite_q3[13:12],sprite_q3[14]}][scanned_sprite[7:3]] <= 1;
+                        sprite_passes[sprite_q3[13:12]] <= 1;
+                        sprite_groups[sprite_q3[13:12]][scanned_sprite[7:3]] <= 1;
                     end
                     if (output_x == 319) state <= BG_START; else output_x = output_x + 9'd1;
                 end
@@ -518,10 +518,9 @@ module pdc_ppu (
                 state[$clog2(SPRITE_START)]: begin
                     screen_x <= 12'($signed(sprite_q1[8:0]))+12'(sprite_x_bias);
                     object_sprite <= 1;
-                    if (!sprite_enabled || sprite_index == 256 || !sprite_passes[{layer,blend_pass}]) begin
-                        if (!blend_pass && sprite_enabled) begin blend_pass = 1; sprite_index <= 0; state<=SPRITE_RESTART; end
-                        else if (layer == 3) begin output_x = 0; state <= EMIT; end
-                        else begin layer = layer + 2'd1; bg_index = 0; blend_pass = 0; sprite_index <= 0; state <= BG_START; end
+                    if (!sprite_enabled || sprite_index == 256 || !sprite_passes[layer]) begin
+                        if (layer == 3) begin output_x = 0; state <= EMIT; end
+                        else begin layer = layer + 2'd1; bg_index = 0; sprite_index <= 0; state <= BG_START; end
                     end else if (empty_sprite_group) begin
                         sprite_index <= next_sprite_group; state <= SPRITE_RESTART;
                     end else begin
@@ -630,7 +629,7 @@ module pdc_ppu (
                     else begin tile_address <= bitmap_address; state <= TILE_SETUP; end
                 end
                 state[$clog2(NEXT_OBJECT)]: if (!bg_index) begin bg_index = 1; state <= BG_START; end
-                    else begin sprite_index <= 0; blend_pass = 0; state <= SPRITE_START; end
+                    else begin sprite_index <= 0; state <= SPRITE_START; end
                 state[$clog2(EMIT)]: if (pixel_ready) begin
                     pixel_valid <= 1; pixel_x <= output_x; pixel_y <= screen_y;
                     pixel_data <= pixel_q[15] ? 15'b0 : pixel_q[14:0];

@@ -6,7 +6,10 @@ confirmed at **full speed with clean audio**, following successful simulation,
 FPGA timing, verified installation and physical testing.
 
 The tested Pocket entry is **PocketDreamConsoleFPGATest**, version
-`0.1.0-sprite-groups`. The main RTL and build tools match that installed build.
+`0.1.0-sprite-groups`. That installed build is preserved as the recovery baseline.
+The current source adds startup black output, display filters and sprite priority
+corrections; see the [refinement notes](docs/native-refinements.md) for validation
+status, the Pot Pit reproduction, additional ROM candidates and save-state scope.
 See the [native FPGA guide](docs/native-fpga.md) for architecture, prerequisites,
 verification and build commands, and the [baseline record](docs/native-full-speed-baseline.json)
 for exact hashes and recovery paths. Save states, sleep/resume and exhaustive

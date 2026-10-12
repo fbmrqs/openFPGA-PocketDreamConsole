@@ -14,5 +14,6 @@ Local changes:
 - Forward unmasked port A buffer writes to the PDC adapter, matching MAME's workaround for bank switching from internal RAM. Normal GPIO direction/mask handling is retained for other operations.
 - Correct the audio buffer wrap condition to prevent an out-of-bounds write.
 - Handle common RAM and ROM reads before dispatching peripheral register reads, preserving address masking and external-memory decoding.
+- Draw blended and opaque sprites together in increasing sprite index within each depth, matching MAME's SPG2xx renderer. Blending changes opacity, not priority; this prevents an earlier shadow from covering a later body sprite.
 
 The core runs with `-fno-strict-aliasing`, as its upstream register and pixel implementations rely on union overlays.

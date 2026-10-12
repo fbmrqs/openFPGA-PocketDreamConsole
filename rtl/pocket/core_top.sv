@@ -305,7 +305,12 @@ always_ff @(posedge clk_74a or posedge reset_bridge)
 always_ff @(posedge clk_system or posedge reset_system)
     if (reset_system) begin host_reset_sync<=0;keys_sync_1<=0;keys_sync_2<=0;end
     else begin host_reset_sync<={host_reset_sync[0],reset_n};keys_sync_1<=cont1_key;keys_sync_2<=keys_sync_1;end
-core_bridge_cmd commands (
+wire grayscale, grayscale_active;
+(* altera_attribute = "-name SYNCHRONIZER_IDENTIFICATION FORCED_IF_ASYNCHRONOUS" *) logic [1:0] grayscale_ack;
+always_ff @(posedge clk_74a or posedge reset_bridge)
+    if (reset_bridge) grayscale_ack<=0;
+    else grayscale_ack<={grayscale_ack[0],grayscale_active};
+pdc_bridge_cmd commands (
     .clk(clk_74a),.reset_n,.bridge_endian_little,.bridge_addr,.bridge_rd,.bridge_rd_data(command_read),.bridge_wr,.bridge_wr_data,
     .status_boot_done(!reset_bridge),.status_setup_done(initialized_sync[1]),.status_running(running_sync[1]),
     .dataslot_requestread(),.dataslot_requestread_id(),.dataslot_requestread_ack(1'b1),.dataslot_requestread_ok(1'b1),
@@ -313,6 +318,7 @@ core_bridge_cmd commands (
     .dataslot_requestwrite_ack(slot_write),.dataslot_requestwrite_ok(slot_id!=1 || slot_ok),
     .dataslot_update(),.dataslot_update_id(),.dataslot_update_size(),.dataslot_allcomplete(slot_complete),
     .rtc_epoch_seconds(),.rtc_date_bcd(),.rtc_time_bcd(),.rtc_valid(),.osnotify_inmenu(),
+    .video_grayscale(grayscale),.video_grayscale_active(grayscale_ack[1]),
     .savestate_supported(1'b0),.savestate_addr(32'b0),.savestate_size(32'b0),.savestate_maxloadsize(32'b0),
     .savestate_start(),.savestate_start_ack(1'b0),.savestate_start_busy(1'b0),.savestate_start_ok(1'b0),.savestate_start_err(1'b0),
     .savestate_load(),.savestate_load_ack(1'b0),.savestate_load_busy(1'b0),.savestate_load_ok(1'b0),.savestate_load_err(1'b0),
@@ -393,7 +399,8 @@ wire video_underflow, frame_fault, audio_overflow, audio_underflow;
 wire [15:0] dropped_frames;
 wire output_reset=core_reset || !native_ready || !rom_ready;
 pdc_framebuffer display (
-    .reset(output_reset),.system_clk(clk_system),.memory_clk(clk_psram),.video_clk(clk_video),
+    .reset(output_reset),.video_reset(global_reset),.grayscale,.grayscale_active,
+    .system_clk(clk_system),.memory_clk(clk_psram),.video_clk(clk_video),
     .pixel_valid,.pixel_ready,.pixel_x,.pixel_y,.pixel_data,
     .memory_read(ps_read),.memory_write(ps_write),.memory_address(ps_address),.memory_data(ps_data),.memory_busy(ps_busy),.memory_valid(ps_valid),.memory_q(ps_q),
     .video_rgb,.video_de,.video_hs,.video_vs,.underflow(video_underflow),.write_fault(frame_fault),.dropped_frames);

@@ -98,7 +98,7 @@ int main() {
             }
         }
     }
-    // Empty sprite passes must not cost eight full scans per visible line.
+    // Empty layers must not cost four full sprite scans per visible line.
     reference.Reset();cpu.Reset();irq.Reset();dut.reset=1;pending=false;count=0;tick();dut.reset=0;
     while(!dut.ready)tick();memory.words.clear();write(0x2842,1);
     reference.DrawLine(100);dut.line=100;dut.start_line=1;tick();dut.start_line=0;
@@ -109,7 +109,7 @@ int main() {
     }
     for(unsigned x=0;x<320;x++)if(result[x]!=reference.framebuffer_[100][x].raw)return 1;
     std::printf("Empty sprite line: %u clocks (budget 700)\n",empty_clocks);
-    // Exercise both ends of the sprite RAM and every layer/blend pass.
+    // Exercise both ends of the sprite RAM, every layer and both blend flags.
     unsigned boundary_lines=0,maximum_sparse_clocks=0;
     for(unsigned slot : {0u,1u,7u,8u,15u,16u,127u,128u,247u,248u,254u,255u})for(unsigned pass=0;pass<8;pass++) {
         reference.Reset();cpu.Reset();irq.Reset();dut.reset=1;pending=false;count=0;tick();dut.reset=0;
@@ -134,6 +134,26 @@ int main() {
         }
     }
     std::printf("Sparse sprite lines: maximum %u clocks (budget 820)\n",maximum_sparse_clocks);
+    // Blend changes opacity, not sprite priority. A later opaque body covers an
+    // earlier blended shadow; a later shadow still blends over an earlier body.
+    for(unsigned shadow_slot : {0u,255u})for(unsigned depth=0;depth<4;depth++) {
+        reference.Reset();cpu.Reset();irq.Reset();dut.reset=1;pending=false;count=0;tick();dut.reset=0;
+        while(!dut.ready)tick();memory.words.clear();memory.zero_default=true;
+        write(0x2842,1);write(0x2822,0x100);write(0x282a,1);
+        write(0x2b00,0);write(0x2b10,0x7fff);
+        for(unsigned slot : {0u,255u}) {
+            unsigned base=0x2c00+4*slot;
+            write(base,1);write(base+1,0);write(base+2,0);
+            write(base+3,uint16_t((depth<<12)|(slot==shadow_slot ? 0x4000 : 0x0100)));
+        }
+        reference.DrawLine(128);dut.line=128;dut.start_line=1;tick();dut.start_line=0;
+        while(!dut.line_done)tick();
+        const uint16_t expected=shadow_slot==0 ? 0x7fff : 0x3def;
+        if(reference.framebuffer_[128][160].raw!=expected || result[160]!=expected) {
+            std::fprintf(stderr,"Sprite priority depth %u shadow slot %u: expected %04x actual %04x reference %04x\n",depth,shadow_slot,expected,result[160],reference.framebuffer_[128][160].raw);return 1;
+        }
+    }
+    std::printf("Blended/opaque sprite priority: both orders in all four layers passed\n");
     // A preceding sprite must not leave its palette active on the next one.
     reference.Reset();cpu.Reset();irq.Reset();dut.reset=1;pending=false;count=0;tick();dut.reset=0;
     while(!dut.ready)tick();memory.words.clear();memory.zero_default=true;
@@ -150,6 +170,6 @@ int main() {
     for(unsigned x=0;x<320;x++)if(result[x]!=reference.framebuffer_[32][x].raw) {
         std::fprintf(stderr,"PPU overlap pixel (%u,32) expected %04x actual %04x\n",x,reference.framebuffer_[32][x].raw,result[x]);return 1;
     }
-    std::printf("PPU differential: %u scanlines / %u pixels matched\n",fixture*5+2+boundary_lines,(fixture*5+2+boundary_lines)*320);
+    std::printf("PPU differential: %u scanlines / %u pixels matched\n",fixture*5+10+boundary_lines,(fixture*5+10+boundary_lines)*320);
 }
 }
