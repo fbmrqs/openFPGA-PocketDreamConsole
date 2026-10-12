@@ -1,0 +1,82 @@
+{
+  "date": "2026-10-12",
+  "milestone": "Native FPGA gameplay at full speed with clean audio on Analogue Pocket",
+  "hardware_report": {
+    "reported_by": "Fabio",
+    "result": "Games are running at full speed, sound is perfect",
+    "coverage": "User-tested gameplay; exhaustive title coverage and long-duration stability remain unverified"
+  },
+  "core_id": "Local.PocketDreamConsoleFPGATest",
+  "package_version": "0.1.0-sprite-groups",
+  "supported_roms": [
+    "PDC30 Pink",
+    "PDC100"
+  ],
+  "rbf_sha256": "2f85fa622cb95b76e9c131f9ed0e121544c291da41c55982831cf4b156ea7158",
+  "installed_bitstream_rbf_r_sha256": "c8b96c91943c6efaa43d4b602622575b76ee16e31b89393150542ea1c5567373",
+  "fpga_inputs_sha256": "c685735d4b18a56e9493040554fec50dc0e4d0329a952171c95eea6c308a1b4e",
+  "clock_khz": {
+    "system_requested": 98304,
+    "sdram_requested": 49152,
+    "audio_master_requested": 12288
+  },
+  "timing": {
+    "corners_passed": 4,
+    "setup_slack_ns": [
+      0.006,
+      0.035,
+      3.984,
+      4.352
+    ],
+    "other_checks": "Internal hold/recovery/removal/pulse width, SDRAM and PSRAM timing, graphics memory mapping and clock crossings passed"
+  },
+  "resources": {
+    "alm_used": 16290,
+    "alm_available": 18480,
+    "m10k_used": 288,
+    "m10k_available": 308,
+    "dsp_used": 25,
+    "dsp_available": 66
+  },
+  "simulation": {
+    "all_receipts_passed": [
+      "components",
+      "system-pink",
+      "system-pdc100",
+      "system-pink-paced",
+      "system-pdc100-paced",
+      "system-pink-pocket",
+      "system-pdc100-pocket",
+      "fpga"
+    ],
+    "frames_per_rom_per_system_mode": 1800,
+    "cpu_cases": 183779,
+    "stereo_samples": 223868,
+    "pocket_max_backlog_cycles": {
+      "pink": 39578,
+      "pdc100": 40374
+    },
+    "receipt_sha256": {
+      "components": "b4091ef2c3d601b457f076ae8499c0da16b3ed00e622ece25a55ce816dfe8140",
+      "system-pink": "8f3336225e5afef9b3f6897fa84957819b0c1f81805c2cb81b2c2a8618ce2dc5",
+      "system-pdc100": "8f3336225e5afef9b3f6897fa84957819b0c1f81805c2cb81b2c2a8618ce2dc5",
+      "system-pink-paced": "8f3336225e5afef9b3f6897fa84957819b0c1f81805c2cb81b2c2a8618ce2dc5",
+      "system-pdc100-paced": "8f3336225e5afef9b3f6897fa84957819b0c1f81805c2cb81b2c2a8618ce2dc5",
+      "system-pink-pocket": "99a68b5f7dffbf4186681ebec7875dce415ceafb9d10e0b78e3c9eab7c09c970",
+      "system-pdc100-pocket": "99a68b5f7dffbf4186681ebec7875dce415ceafb9d10e0b78e3c9eab7c09c970",
+      "fpga": "06dcb79eaafd056f79aeff8bb0229ad2084d92dc12f63f6111fdf04ab4ef4493"
+    }
+  },
+  "installation": {
+    "verified": true,
+    "writes_flushed": true,
+    "ejected": false
+  },
+  "local_recovery": {
+    "workspace": "build/native-mmio-workspace",
+    "private_package": "build/native-mmio-workspace/dist/pocket-dc-native-experimental",
+    "private_zip": "build/native-mmio-workspace/dist/pocket-dc-native-experimental.zip",
+    "validation": "build/native-mmio-workspace/build/native-evidence"
+  },
+  "release_status": "Local hardware-confirmed milestone; private package contains ROMs and is excluded from Git; no public release made"
+}

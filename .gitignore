@@ -1,0 +1,17 @@
+.DS_Store
+/.deps/
+/build/
+/dist/
+__pycache__/
+*.py[cod]
+*.log
+
+# Local ROM dumps and generated FPGA/package binaries.
+*.bin
+*.rom
+*.u[0-9]
+*.rbf
+*.rbf_r
+*.sof
+*.zip
+*.run

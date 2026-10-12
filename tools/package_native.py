@@ -1,0 +1,196 @@
+#!/usr/bin/env python3
+"""Package a validated native core or an explicitly experimental hardware test."""
+from pathlib import Path
+import argparse
+import json
+import re
+import shutil
+import zipfile
+from fpga.evidence import inputs, require
+from package import ROMS, digest, write_json, validate_core_identity, validate_input
+
+ROOT = Path(__file__).resolve().parents[1]
+
+def fpga_verification(experimental):
+    outputs = ROOT / 'build/fpga/native/fpga/output_files'
+    rbf_hash = digest(outputs / 'ap_core.rbf', 'sha256')
+    if not experimental:
+        receipt = require('fpga')
+        if rbf_hash != receipt['rbf_sha256']:
+            raise ValueError('Bitstream differs from the validated build.')
+        return receipt
+    receipt = json.loads((ROOT / 'build/native-evidence/fpga.json').read_text())
+    if receipt['inputs'] != inputs('fpga'):
+        raise ValueError('Experimental FPGA build has stale source evidence.')
+    for report, success in (('ap_core.fit.summary', 'Fitter Status : Successful'),
+                            ('ap_core.asm.rpt', 'Quartus Prime Assembler was successful')):
+        if success not in (outputs / report).read_text():
+            raise ValueError(f'Experimental build did not complete: {report}')
+    slacks = []
+    for corner in range(4):
+        report = (outputs / f'native-{corner}-setup.rpt').read_text()
+        match = re.search(r'Worst case slack is (-?[0-9.]+)', report)
+        if not match:
+            raise ValueError(f'Missing setup timing result for corner {corner}.')
+        slacks.append(float(match[1]))
+    return {**receipt, 'rbf_sha256': rbf_hash, 'experimental': True,
+            'setup_slack_ns': slacks}
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--install-to', type=Path)
+    parser.add_argument('--experimental', action='store_true',
+                        help='Package a separate hardware test even when timing fails.')
+    args = parser.parse_args()
+    shortname = 'PocketDreamConsoleFPGA' + ('Test' if args.experimental else '')
+    core_id = 'Local.' + shortname
+    out = ROOT / ('dist/pocket-dc-native-experimental' if args.experimental else 'dist/pocket-dc-native')
+    verification = {name: require(name) for name in
+                    ('components', 'system-pink', 'system-pdc100',
+                     'system-pink-paced', 'system-pdc100-paced',
+                     'system-pink-pocket', 'system-pdc100-pocket')}
+    require('fpga')  # Keep the passing slow-clock timing baseline for this probe.
+    verification['fpga'] = fpga_verification(args.experimental)
+    slow_receipt = json.loads((ROOT / 'build/slow-clock-validation.json').read_text())
+    if (not slow_receipt.get('passed') or slow_receipt.get('clock_khz') != 98304 or
+            slow_receipt['system_inputs'] != inputs('system-pink') or
+            slow_receipt['fpga_inputs'] != inputs('fpga') or
+            slow_receipt['script_sha256'] != digest(ROOT / 'tools/fpga/slow-clock-test.sh', 'sha256')):
+        raise ValueError('Slow-clock validation is missing, failed or stale.')
+    verification['slow_system'] = slow_receipt
+
+    rbf = ROOT / 'build/fpga/native/fpga/output_files/ap_core.rbf'
+    for filename, _, _, size, _, expected in ROMS:
+        path = ROOT / filename
+        if path.stat().st_size != size or digest(path, 'sha1') != expected:
+            raise ValueError(f'Original ROM size/hash mismatch: {filename}')
+    if out.exists():
+        shutil.rmtree(out)
+    core = out / 'Cores' / core_id
+    core.mkdir(parents=True)
+    template = ROOT / '.deps/core-template'
+    definition = json.loads((template / 'core.json').read_text())
+    definition['core']['metadata'].update(
+        platform_ids=['pdc'], shortname=shortname, author='Local', url='',
+        description='Native PDC full-speed candidate' if args.experimental else 'Native PDC30 / PDC100 FPGA core',
+        version='0.1.0-sprite-groups' if args.experimental else '0.1.0-native-preview', date_release='2026-10-12')
+    definition['core']['framework']['dock']['supported'] = False
+    write_json(core / 'core.json', definition)
+    for name in ('audio.json', 'video.json', 'interact.json', 'variants.json'):
+        shutil.copy2(template / name, core / name)
+    if args.experimental:
+        write_json(core / 'interact.json', {'interact': {'magic': 'APF_VER_1',
+            'variables': [{'name': 'S', 'id': 1, 'type': 'number_u32',
+                           'enabled': False, 'address': '0x20000000'},
+                          {'name': 'F', 'id': 2, 'type': 'number_u32',
+                           'enabled': False, 'address': '0x20000008'},
+                          {'name': 'O', 'id': 3, 'type': 'number_u32',
+                           'enabled': False, 'address': '0x2000000c'},
+                          {'name': 'M', 'id': 4, 'type': 'number_u32',
+                           'enabled': False, 'address': '0x20000010'},
+                          {'name': 'R', 'id': 5, 'type': 'number_u32',
+                           'enabled': False, 'address': '0x20000014'},
+                          {'name': 'L', 'id': 6, 'type': 'number_u32',
+                           'enabled': False, 'address': '0x20000018'},
+                          {'name': 'W', 'id': 7, 'type': 'number_u32',
+                           'enabled': False, 'address': '0x2000001c'},
+                          {'name': 'A', 'id': 8, 'type': 'number_u32',
+                           'enabled': False, 'address': '0x20000020'},
+                          {'name': 'B', 'id': 9, 'type': 'number_u32',
+                           'enabled': False, 'address': '0x20000024'}], 'messages': []}})
+    shutil.copy2(ROOT / '.deps/openfpga-sdk/dist/sdk/Cores/ThinkElastic.openfpgaOS/icon.bin', core / 'icon.bin')
+    write_json(core / 'data.json', {'data': {'magic': 'APF_VER_1', 'data_slots': [
+        {'id': 0, 'name': 'Game', 'required': True, 'parameters': 275, 'extensions': ['json']},
+        {'id': 1, 'name': 'PDC ROM', 'required': False, 'secondary': True, 'parameters': 0,
+         'extensions': ['rom'], 'address': '0x10000000', 'size_maximum': '0x4000000'}]}})
+    write_json(core / 'input.json', {'input': {'magic': 'APF_VER_1', 'controllers': [{
+        'type': 'default', 'mappings': [
+            {'id': 0, 'name': 'A', 'key': 'pad_btn_a'},
+            {'id': 1, 'name': 'B', 'key': 'pad_btn_b'},
+            {'id': 10, 'name': 'Left Trigger', 'key': 'pad_trig_l'},
+            {'id': 11, 'name': 'Right Trigger', 'key': 'pad_trig_r'},
+            {'id': 20, 'name': 'Pause', 'key': 'pad_btn_start'},
+            {'id': 21, 'name': 'Select+Start: Reset', 'key': 'pad_btn_select'}]}]}})
+    reversal = bytes(int(f'{byte:08b}'[::-1], 2) for byte in range(256))
+    (core / 'bitstream.rbf_r').write_bytes(rbf.read_bytes().translate(reversal))
+    for filename, stem, label, _, used, _ in ROMS:
+        asset = out / 'Assets/pdc/common' / f'{stem}.rom'
+        asset.parent.mkdir(parents=True, exist_ok=True)
+        with (ROOT / filename).open('rb') as source, asset.open('wb') as dest:
+            remaining = used
+            while remaining:
+                block = source.read(min(remaining, 1024*1024))
+                if not block:
+                    raise ValueError(f'Short ROM read: {filename}')
+                dest.write(block)
+                remaining -= len(block)
+        write_json(out / 'Assets/pdc' / core_id / f'{label}.json', {'instance': {
+            'magic': 'APF_VER_1', 'data_slots': [{'id': 1, 'filename': f'{stem}.rom'}]}})
+    write_json(out / 'Platforms/pdc.json', {'platform': {
+        'category': 'Handheld', 'name': 'Pocket Dream Console', 'year': 2008,
+        'manufacturer': 'Conny / VideoJet / Anncia'}})
+    image = out / 'Platforms/_images/pdc.bin'
+    image.parent.mkdir(parents=True)
+    shutil.copy2(ROOT / '.deps/openfpga-sdk/dist/sdk/Platforms/_images/openfpgaos.bin', image)
+    notices = out / 'Licenses' / shortname
+    notices.mkdir(parents=True)
+    for source, name in (
+        (ROOT / 'third_party/veesem/LICENSE', 'veesem-ISC.txt'),
+        (ROOT / 'third_party/pocket/psram-LICENSE', 'psram-MIT.txt'),
+        (ROOT / 'third_party/pocket/sdram-LICENSE', 'framework-LICENSE.txt'),
+        (ROOT / '.deps/openfpga-sdk/LICENSE', 'openfpgaSDK-Apache-2.0.txt'),
+        (ROOT / '.deps/openfpga-sdk/NOTICE', 'openfpgaSDK-NOTICE.txt'),
+        (ROOT / 'third_party/pocket/README.md', 'memory-controller-changes.md')):
+        shutil.copy2(source, notices / name)
+    shutil.copy2(ROOT / 'docs/native-fpga.md', out / ('README-FPGA-EXPERIMENTAL.md' if args.experimental else 'README-FPGA.md'))
+    validate_core_identity(core)
+    validate_input(json.loads((core / 'input.json').read_text()))
+    for name in ('core', 'audio', 'video', 'data', 'input', 'interact', 'variants'):
+        definition = json.loads((core / f'{name}.json').read_text())
+        if definition[name]['magic'] != 'APF_VER_1':
+            raise ValueError(f'Invalid native core definition: {name}.json')
+    files = {p.relative_to(out).as_posix(): digest(p, 'sha256')
+             for p in sorted(out.rglob('*')) if p.is_file()}
+    write_json(out / ('native-experimental-manifest.json' if args.experimental else 'native-manifest.json'),
+               {'hardware_verified': False, 'experimental': args.experimental,
+                'memory_check': {'bank_bytes': 8388608, 'passes': 2, 'pink_crc32': '0x0C1DC0F3', 'pdc100_crc32': '0xCCD6C6D3'},
+                'pacing_max_backlog_cycles': 131071, 'pacing_overflow_status_mask': '0x00008000',
+                'diagnostic_clock_khz': 98304, 'sdram_clock_khz': 49152, 'prior_full_system_test_clock_khz': 196608,
+               'validation': verification, 'files': files})
+    archive = ROOT / ('dist/pocket-dc-native-experimental.zip' if args.experimental else 'dist/pocket-dc-native-preview.zip')
+    with zipfile.ZipFile(archive, 'w', zipfile.ZIP_DEFLATED, compresslevel=6) as dest:
+        for file in sorted(out.rglob('*')):
+            if file.is_file():
+                dest.write(file, file.relative_to(out))
+    print(f'Native SD tree: {out}\nPrivate ROM-inclusive ZIP: {archive}')
+    if args.install_to:
+        card = args.install_to.resolve(strict=True)
+        for name, expected in files.items():
+            target = card / name
+            if target.exists() and digest(target, 'sha256') == expected:
+                continue
+            if target.exists() and name.startswith(('Assets/pdc/common/', 'Platforms/')):
+                raise ValueError(f'Shared card file differs: {target}; installation stopped.')
+        for source in sorted(out.rglob('*')):
+            if not source.is_file():
+                continue
+            target = card / source.relative_to(out)
+            expected = digest(source, 'sha256')
+            if target.exists() and digest(target, 'sha256') == expected:
+                continue
+            target.parent.mkdir(parents=True, exist_ok=True)
+            temporary = target.with_name(target.name + '.pdc-tmp')
+            shutil.copyfile(source, temporary)
+            temporary.replace(target)
+            if digest(target, 'sha256') != expected:
+                raise ValueError(f'Card verification failed: {target}')
+        print(f'Installed and verified on {card}; card remains mounted.')
+    print('Physical Pocket boot, gameplay and memory timing still require a device test.')
+
+
+if __name__ == '__main__':
+    try:
+        main()
+    except (OSError, ValueError, KeyError) as error:
+        raise SystemExit(str(error))

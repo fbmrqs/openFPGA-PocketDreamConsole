@@ -1,0 +1,21 @@
+// Adapted for the PDC Pocket port; see ../README.md and ../LICENSE.
+#include "core/portable.h"
+#include "random.h"
+
+
+
+void Random::Set(Word value) {
+  seed_ = value;
+}
+Word Random::Get() {
+  return rand() & 0x7fff;
+  // word_t value = seed;
+  // update_seed();
+  // return value;
+}
+
+void Random::UpdateSeed() {
+  seed_ <<= 1;
+  bool shifted_in = ((seed_ & 0x8000) != 0) ^ ((seed_ & 0x4000) != 0);
+  seed_ = (seed_ & 0x7FFF) | shifted_in;
+}

@@ -1,0 +1,5 @@
+Unmodified FPGA and OS runtime binaries from:
+https://github.com/openfpgaOS/openfpgaSDK/tree/a408ddc12aed0dfaa4aa22c06af82f829db77126/runtime
+Corresponding runtime source (runtime/MANIFEST):
+https://github.com/openfpgaOS/openfpgaCore/tree/618a3eb
+Consult upstream NOTICE and per-component notices for the embedded RTL.
