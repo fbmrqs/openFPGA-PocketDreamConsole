@@ -37,7 +37,7 @@ int main() {
     for(size_t n=0;n<actual.size();n++)if(actual[n]!=silent[n])return 1;
     std::printf("Silent sound update: %u clocks (budget 12)\n",silent_clocks);
     unsigned compared=0;
-    for (unsigned fixture=0;fixture<64;fixture++) {
+    for (unsigned fixture=0;fixture<72;fixture++) {
         reference.Reset();pending=false;dut.reset=1;tick();dut.reset=0;
         for (int n=0;n<16;n++) {
             unsigned base=0x3000+n*16;
@@ -53,11 +53,25 @@ int main() {
             write(base+2,random()%8);write(base+6,uint16_t(random()));
             write(base+3,fixture%4);write(base+7,uint16_t(random()));
         }
+        if (fixture>=64) {
+            // Envelope equality, overshoot, shutdown and bounds with sparse voices.
+            constexpr std::array<uint8_t,8> source={8,8,8,8,8,127,0,9};
+            constexpr std::array<uint8_t,8> target={16,16,0,0,4,127,127,9};
+            constexpr std::array<uint8_t,8> step={2,8,2,16,8,127,127,0};
+            unsigned envelope=fixture-64;
+            for (unsigned voice=0;voice<16;voice++) {
+                unsigned base=0x3000+voice*16;
+                write(base+4,uint16_t(target[envelope]<<8 | (envelope>=2 && envelope<=4 ? 0x80 : 0) | step[envelope]));
+                write(base+5,source[envelope]);write(base+6,0xff01);
+                write(0x3200+voice*16,0);write(0x3204+voice*16,0);
+            }
+        }
         write(0x3415,fixture&4 ? 0xffff : 0);write(0x3418,fixture&8 ? 0xffff : 0);
-        write(0x3400,fixture<48 ? 0xffff : std::array<uint16_t,4>{0,0x8001,0x5555,0x0240}[fixture%4]);write(0x3401,127);write(0x3402,uint16_t(random()));
+        if (fixture>=64) {write(0x3415,0);write(0x3418,0);}
+        write(0x3400,fixture>=64 ? 0x8001 : fixture<48 ? 0xffff : std::array<uint16_t,4>{0,0x8001,0x5555,0x0240}[fixture%4]);write(0x3401,127);write(0x3402,uint16_t(random()));
         write(0x340d,uint16_t(random()));write(0x3404,2);write(0x3405,0x8004);
         for (unsigned addr=0x3406;addr<=0x3409;addr++) write(addr,0x0123);
-        if (fixture&16) write(0x340a,0xffff);
+        if (fixture<64 && fixture&16) write(0x340a,0xffff);
         for (unsigned iteration=0;iteration<4000;iteration++) {
             unsigned elapsed=2+random()%165;
             actual.clear();reference.Chip().spu_.RunCycles(elapsed);
@@ -81,5 +95,5 @@ int main() {
             compared+=actual.size()/2;
         }
     }
-    std::printf("SPU differential: %u stereo samples and 256000 register/IRQ snapshots matched\n",compared);
+    std::printf("SPU differential: %u stereo samples and 288000 register/IRQ snapshots matched\n",compared);
 }

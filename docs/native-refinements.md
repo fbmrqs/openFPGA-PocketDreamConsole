@@ -5,13 +5,37 @@ The recovery baseline is commit `8338dc7`, tag
 on Pocket in both PDC30 Pink and PDC100. New source changes require fresh
 simulation, four-corner timing, package verification and a Pocket test.
 
-The frozen follow-up candidate is `build/native-display-workspace`. Its runner
+The current frozen follow-up candidate is `build/native-display-timing-workspace`. Its runner
 performs all validation gates, packages both display entries, verifies and
 flushes installation only on the previously identified Pocket card, and shows
 a window alert for completion, failure or a required card connection. It never
 ejects the card. `diagnostic-build-status.json` and
 `diagnostic-install-status.json` record the live outcome. A running or packaged
 candidate is not a hardware-confirmed result.
+
+## Build timing follow-up
+
+The first candidate, `build/native-display-workspace`, passed all component
+checks and six 1,800-frame system runs, including stereo audio and video
+comparisons. FPGA fitting and assembly completed, but setup timing failed at
+the two slow device corners: −0.536 ns and −0.354 ns. Installation was blocked;
+the hardware-confirmed card build was not replaced. The failed workspace and
+reports are preserved for comparison. Rechecking its fitted netlist produced
+the same failures.
+
+The longest paths run through sound channel advancement and envelope routing.
+The timing follow-up calculates the next channel independently of the late
+advance decision. It also captures envelope route flags when committing the
+amplitude, avoiding another multiplexed register read and comparison on the
+next state transition. Neither change adds cycles or changes audio arithmetic,
+system clocks or timing constraints. Simulation compares the captured flags
+with the actual committed registers; explicit envelope boundary cases supplement
+the existing random audio, register and interrupt comparisons.
+
+Only a fresh placement and four-corner timing check can establish that these
+changes resolve the physical timing failure. Passing functional simulation is
+not evidence of timing closure. The CPU address path also had negative margin
+in the failed placement and remains part of the required full timing check.
 
 ## Startup and reset picture
 

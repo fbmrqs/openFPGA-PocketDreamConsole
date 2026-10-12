@@ -51,6 +51,8 @@ module pdc_spu #(parameter logic ADDRESS_LOOKAHEAD = 0) (
             $fatal(1,"Sound channel selector and register index diverged");
 `endif
     logic channel_clear, channel_step, channel_jump;
+    // Keep late eligibility decisions out of the counter carry chain.
+    (* keep *) wire [4:0] incremented_channel=channel+5'd1;
     logic [4:0] next_enabled_channel;
     logic [16:0] next_enabled_position;
     always_comb begin
@@ -192,7 +194,15 @@ module pdc_spu #(parameter logic ADDRESS_LOOKAHEAD = 0) (
     logic [6:0] envelope_amplitude, repeat_remaining;
     (* preserve *) logic [6:0] envelope_source, envelope_step, envelope_target;
     logic envelope_down;
+    (* preserve, dont_retime *) logic envelope_target_reached, envelope_shutdown;
     logic signed [8:0] envelope_candidate;
+`ifdef PDC_VERIFY_MMIO_CYCLES
+    always_ff @(posedge clk)
+        if (!reset && state[$clog2(ENV_ROUTE)] &&
+            (envelope_target_reached!=(c[channel[3:0]][5][6:0]==c[channel[3:0]][4][14:8]) ||
+             envelope_shutdown!=(c[channel[3:0]][4][7] && c[channel[3:0]][5][6:0]==0)))
+            $fatal(1,"Prepared envelope route differs from committed channel registers");
+`endif
     localparam integer STEP_SIZE [0:88] = '{
         7,8,9,10,11,12,13,14,16,17,19,21,23,25,28,31,34,37,41,45,50,55,60,66,73,80,
         88,97,107,118,130,143,157,173,190,209,230,253,279,307,337,371,408,449,494,544,598,
@@ -386,6 +396,7 @@ module pdc_spu #(parameter logic ADDRESS_LOOKAHEAD = 0) (
         if (reset) begin
             decoded_pcm<=0;
             envelope_source<=0;envelope_step<=0;envelope_target<=0;envelope_down<=0;envelope_candidate<=0;
+            envelope_target_reached<=0;envelope_shutdown<=0;
             pitch_start<=0;pitch_target<=0;pitch_step<=0;pitch_down<=0;pitch_candidate<=0;
             mix_previous<=0;mix_current<=0;mix_phase<=0;mix_previous_weight<=0;mix_amplitude<=0;mix_pan<=0;mix_volume<=0;
             for (i=0;i<16;i=i+1) begin
@@ -642,14 +653,16 @@ module pdc_spu #(parameter logic ADDRESS_LOOKAHEAD = 0) (
                     envelope_amplitude=envelope_down ?
                         (envelope_candidate<$signed({2'b0,envelope_target}) ? envelope_target : envelope_candidate[6:0]) :
                         (envelope_candidate>$signed({2'b0,envelope_target}) ? envelope_target : envelope_candidate[6:0]);
+                    envelope_target_reached<=envelope_amplitude==envelope_target;
+                    envelope_shutdown<=envelope_down && envelope_amplitude==0;
                     c[channel[3:0]][5][6:0]<=envelope_amplitude;state<=ENV_ROUTE;
                 end
                 state[$clog2(ENV_ROUTE)]: begin
                     index=int'(channel[3:0]);
                     envelope_repeat_count<=c[index][6][15:9];
                     env_read_address<=prepared_envelope_address;env_repeat<=c[index][6][8];
-                    if (c[index][4][7] && c[index][5][6:0]==0) begin stop_channel(index);state<=PITCH;end
-                    else if (c[index][5][6:0]==c[index][4][14:8]) begin
+                    if (envelope_shutdown) begin stop_channel(index);state<=PITCH;end
+                    else if (envelope_target_reached) begin
                         state<=ENV_REPEAT;
                     end else state<=ENV_RELOAD;
                 end
@@ -720,6 +733,8 @@ module pdc_spu #(parameter logic ADDRESS_LOOKAHEAD = 0) (
                 default: state<= IDLE;
             endcase
         end
-        channel<=channel_clear ? 5'd0 : channel_jump ? next_enabled_channel : channel+5'(channel_step);
+        if (channel_clear) channel<=5'd0;
+        else if (channel_jump) channel<=next_enabled_channel;
+        else if (channel_step) channel<=incremented_channel;
     end
 endmodule
