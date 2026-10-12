@@ -45,7 +45,7 @@ int main() {
     auto bridge_tick=[&] {do {tick();} while (!(time%6==3));};
     auto settle=[&](unsigned cycles) {while (cycles--) tick();};
     dut.check_enable=0;dut.reset=1;settle(30);dut.reset=0;settle(30);
-    for (unsigned size : {0x1000000u,0x4000000u}) {
+    for (unsigned size : {0x800000u,0x1000000u,0x4000000u}) {
     committed=0;dut.slot_complete=0;
     dut.slot_id=1;dut.slot_size=size;dut.slot_write=1;bridge_tick();bridge_tick();dut.slot_write=0;
     settle(60);
@@ -61,8 +61,8 @@ int main() {
     }
     dut.slot_complete=1;bridge_tick();dut.slot_complete=0;
     unsigned timeout=0;while (!dut.rom_ready && timeout++<10000) tick();
-    if (!dut.rom_ready || dut.final_bank!=(size==0x1000000 ? 1 : 7) || committed!=count) fail("complete ROM did not start with its final bank");
-    if(~expected_crc!=(size==0x1000000 ? 0x319a7c17u : 0x546062feu))fail("software CRC disagrees with independent zlib fixture");
+    if (!dut.rom_ready || dut.final_bank!=(size==0x800000 ? 0 : size==0x1000000 ? 1 : 7) || committed!=count) fail("complete ROM did not start with its final bank");
+    if(~expected_crc!=(size==0x800000 ? 0x8940c2c6u : size==0x1000000 ? 0x319a7c17u : 0x546062feu))fail("software CRC disagrees with independent zlib fixture");
     if(dut.load_crc!=~expected_crc || dut.write_crc!=~expected_crc)fail("startup-bank loading CRC mismatch");
     std::printf("%u MiB loading taps: L=%08x W=%08x passed\n",size>>20,dut.load_crc,dut.write_crc);
     for (unsigned n=0;n<512;n++) {
@@ -78,7 +78,7 @@ int main() {
         corrupt_read=bad;dut.check_enable=1;
         unsigned timeout=0;while(!dut.check_done && timeout++<100000)tick();
         if(!dut.check_done || dut.check_status!=(bad ? 1 : 7))fail("integrated readback verdict is wrong");
-        uint32_t golden=size==0x1000000 ? 0x95c56ca2u : 0xeb971541u;
+        uint32_t golden=size==0x800000 ? 0xcf964c64u : size==0x1000000 ? 0x95c56ca2u : 0xeb971541u;
         if(!bad && (dut.first_crc!=golden || dut.second_crc!=golden))fail("integrated CRC differs from zlib fixture");
         std::printf("ROM path: %u MiB bank, injected corruption %u, M=%u A=%08x B=%08x passed\n",size>>20,bad,dut.check_status,dut.first_crc,dut.second_crc);
         dut.check_enable=0;settle(100);
@@ -91,5 +91,5 @@ int main() {
     dut.slot_size=0x1234;dut.slot_write=1;bridge_tick();bridge_tick();dut.slot_write=0;settle(60);
     if (dut.rom_ready || !dut.load_fault || dut.slot_ok) fail("invalid ROM length was accepted");
     std::printf("ROM adapter worst miss: %llu system clocks with a 42-memory-clock SDRAM response\n",maximum_read_clocks);
-    std::printf("ROM store: complete 16/64 MiB loads, 1024 delayed burst reads, byte order, bank reset, reload and invalid/incomplete lengths passed\n");
+    std::printf("ROM store: complete 8/16/64 MiB loads, 1536 delayed burst reads, byte order, bank reset, reload and invalid/incomplete lengths passed\n");
 }

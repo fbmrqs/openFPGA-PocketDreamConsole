@@ -9,7 +9,7 @@ public:
     Up = 1, Down = 2, Left = 4, Right = 8,
     A = 16, B = 32, Pause = 64, L = 128, R = 256
   };
-  explicit Pdc(const char* path);
+  explicit Pdc(const char* path, bool videojet_controls = false);
   ~Pdc();
   Pdc(const Pdc&) = delete;
   Pdc& operator=(const Pdc&) = delete;
@@ -55,6 +55,7 @@ private:
   unsigned bank_count_ = 0;
   unsigned bank_switches_ = 0;
   unsigned buttons_ = 0;
+  bool videojet_controls_ = false;
   bool ready_ = false;
   Spg200 chip_;
 };

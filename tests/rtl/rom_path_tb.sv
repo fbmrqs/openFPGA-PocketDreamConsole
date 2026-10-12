@@ -39,8 +39,9 @@ module rom_path_tb (
         .word_write,.word_address,.word_data,.word_done,
         .burst_read,.burst_address,.burst_valid,.burst_done,.burst_data);
     pdc_rom_check #(.BANK_WORDS_BITS(8),.VECTOR_LINE(22'h30),
-                    .PINK_CRC(32'h95c56ca2),.PDC100_CRC(32'heb971541)) check_rom (
+                    .SINGLE_CRC(32'hcf964c64),.PINK_CRC(32'h95c56ca2),.PDC100_CRC(32'heb971541)) check_rom (
         .clk(system_clk),.reset(reset || !check_enable),.rom_ready,.final_bank,
+        .loaded_crc(final_bank==0 ? 32'hcf964c64 : final_bank==1 ? 32'h95c56ca2 : 32'heb971541),.videojet_controls(),
         .rom_request(check_request),.rom_address(check_address),
         .rom_ack,.rom_line_valid,.rom_line_data,.done(check_done),.passed(),
         .status(check_status),.reset_vector(),.first_crc,.second_crc);

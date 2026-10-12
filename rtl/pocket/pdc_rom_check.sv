@@ -2,10 +2,13 @@ module pdc_rom_check #(
     parameter integer BANK_WORDS_BITS=22,
     parameter logic [21:0] VECTOR_LINE=22'h00fff0,
     parameter logic [31:0] PINK_CRC=32'h0c1dc0f3,
+    parameter logic [31:0] SINGLE_CRC=32'hee9e70a3,
     parameter logic [31:0] PDC100_CRC=32'hccd6c6d3
 ) (
     input logic clk, reset, rom_ready,
     input logic [2:0] final_bank,
+    input logic [31:0] loaded_crc,
+    output logic videojet_controls,
     output logic rom_request,
     output wire [24:0] rom_address,
     input logic rom_ack, rom_line_valid,
@@ -23,6 +26,16 @@ module pdc_rom_check #(
     logic [7:0] bit_index;
     logic [255:0] line_bits;
     logic [31:0] crc, expected_crc;
+    logic known_profile;
+    function automatic logic valid_profile(input logic [2:0] last_bank, input logic [31:0] value);
+        case (last_bank)
+            0: return value==SINGLE_CRC || value==32'hcea549ad ||
+                value==32'hfe00b2f0 || value==32'h729e3b2f || value==32'h8502a448 || value==32'h833e72ab;
+            1: return value==PINK_CRC || value==32'h8d598a49 || value==32'h9c35780a;
+            7: return value==PDC100_CRC;
+            default: return 0;
+        endcase
+    endfunction
     wire [31:0] next_crc=(crc>>1) ^ ((crc[0]^line_bits[0]) ? 32'hedb88320 : 32'b0);
     assign rom_address={bank,offset};
     assign done=status[0];
@@ -34,10 +47,14 @@ module pdc_rom_check #(
         if (reset || !rom_ready) begin
             state<=WAIT_READY;rom_request<=0;bank<=0;offset<=0;
             second_pass<=0;bit_index<=0;line_bits<=0;crc<=32'hffffffff;expected_crc<=0;
+            known_profile<=0;videojet_controls<=0;
             status<=0;reset_vector<=0;first_crc<=0;second_crc<=0;
         end else case (state)
             WAIT_READY: begin
-                bank<=final_bank;expected_crc<=final_bank==1 ? PINK_CRC : PDC100_CRC;
+                // The loading tap is stable before rom_ready crosses domains.
+                bank<=final_bank;expected_crc<=loaded_crc;known_profile<=valid_profile(final_bank,loaded_crc);
+                videojet_controls<=final_bank==0 && (loaded_crc==32'hfe00b2f0 || loaded_crc==32'h729e3b2f ||
+                    loaded_crc==32'h8502a448 || loaded_crc==32'h833e72ab);
                 rom_request<=1;state<=WAIT_LINE;
             end
             WAIT_LINE: if (rom_ack) begin
@@ -53,11 +70,11 @@ module pdc_rom_check #(
                 if (&bit_index) begin
                     if (&offset[BANK_WORDS_BITS-1:4]) begin
                         if (!second_pass) begin
-                            first_crc<=~next_crc;status[1]<=~next_crc==expected_crc;
+                            first_crc<=~next_crc;status[1]<=known_profile && ~next_crc==expected_crc;
                             second_pass<=1;offset<=0;crc<=32'hffffffff;
                             rom_request<=1;state<=WAIT_LINE;
                         end else begin
-                            second_crc<=~next_crc;status[2]<=~next_crc==expected_crc;
+                            second_crc<=~next_crc;status[2]<=known_profile && ~next_crc==expected_crc;
                             status[0]<=1;state<=DONE;
                         end
                     end else begin

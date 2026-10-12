@@ -4,6 +4,7 @@ module pdc_system #(
 ) (
     input logic clk, reset, rom_ready,
     input logic [2:0] final_bank,
+    input logic videojet_controls,
     input logic [8:0] buttons,
     output logic rom_request,
     output logic [24:0] rom_address,
@@ -190,7 +191,7 @@ module pdc_system #(
         .current_target(dma_current_target), .remaining(dma_remaining), .request(requests[3]), .write(writes[3]),
         .address(addresses[87:66]), .write_data(write_values[63:48]), .ack(acks[3]), .read_data(shared_data));
     pdc_io io(
-        .clk, .reset(system_reset), .final_bank, .buttons, .pc(io_pc), .ds, .ds_write, .ds_value,
+        .clk, .reset(system_reset), .final_bank, .videojet_controls, .buttons, .pc(io_pc), .ds, .ds_write, .ds_value,
         .access(mmio_access), .write(mmio_write), .address(io_address), .write_data(io_data), .read_data(io_read),
         .advance, .cycles(peripheral_cycles), .busy(io_busy), .ppu_irq, .spu_channel_irq, .spu_beat_irq, .scanline,
         .irq, .fiq, .bank, .bank_changed, .address_decode, .watchdog_reset);

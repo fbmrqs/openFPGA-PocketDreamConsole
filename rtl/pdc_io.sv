@@ -1,6 +1,7 @@
 module pdc_io (
     input logic clk, reset,
     input logic [2:0] final_bank,
+    input logic videojet_controls,
     input logic [8:0] buttons,
     input logic [21:0] pc,
     input logic [5:0] ds,
@@ -162,12 +163,12 @@ module pdc_io (
         case (control_b[2:0]) 2:divisor_b=0;3:divisor_b=2;4:divisor_b=3;default:begin end endcase
         read_data = 0; input_port = 0;
         case (address)
-            14'h3d01: read_data=((port_buffer[0] ^ (port_dir[0] & ~port_attribute[0])) & port_dir[0] & ~port_mask[0]) | ({3'b0,buttons[8],3'b0,buttons[7],8'b0} & ~port_dir[0] & ~port_mask[0]);
+            14'h3d01: read_data=((port_buffer[0] ^ (port_dir[0] & ~port_attribute[0])) & port_dir[0] & ~port_mask[0]) | ((videojet_controls ? 16'b0 : {3'b0,buttons[8],3'b0,buttons[7],8'b0}) & ~port_dir[0] & ~port_mask[0]);
             14'h3d02: read_data=port_buffer[0];
             14'h3d03: read_data=port_dir[0];
             14'h3d04: read_data=port_attribute[0];
             14'h3d05: read_data=port_mask[0];
-            14'h3d06: read_data=((port_buffer[1] ^ (port_dir[1] & ~port_attribute[1])) & port_dir[1] & ~port_mask[1]) | ({8'b0,buttons[3],buttons[6:4],1'b0,buttons[2:0]} & ~port_dir[1] & ~port_mask[1]);
+            14'h3d06: read_data=((port_buffer[1] ^ (port_dir[1] & ~port_attribute[1])) & port_dir[1] & ~port_mask[1]) | ({8'b0,buttons[3] && !videojet_controls,buttons[6:4],buttons[3] && videojet_controls,buttons[2:0]} & ~port_dir[1] & ~port_mask[1]);
             14'h3d07: read_data=port_buffer[1];
             14'h3d08: read_data=port_dir[1];
             14'h3d09: read_data=port_attribute[1];

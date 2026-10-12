@@ -3,7 +3,7 @@ module pacing_tb;
     logic [7:0] cycle_stim=2;
     logic [15:0] backlog;
     always #5 clk=~clk;
-    pdc_system #(.REALTIME(1)) dut(.clk,.reset,.rom_ready(1'b1),.final_bank(3'b0),.buttons(9'b0),
+    pdc_system #(.REALTIME(1)) dut(.clk,.reset,.rom_ready(1'b1),.final_bank(3'b0),.videojet_controls(1'b0),.buttons(9'b0),
         .rom_ack(1'b0),.rom_data(16'b0),.rom_line_valid(1'b0),.rom_line_data(256'b0),
         .pixel_ready(1'b1),.cycle_backlog(backlog));
     integer model_phase=0,model_credit=0;

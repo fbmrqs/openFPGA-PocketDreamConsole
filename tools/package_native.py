@@ -8,6 +8,7 @@ import shutil
 import zipfile
 from fpga.evidence import inputs, require
 from package import ROMS, digest, write_json, validate_core_identity, validate_input
+from rom_library import NATIVE_ROMS, validate_native
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -56,10 +57,12 @@ def main():
     parser.add_argument('--install-to', type=Path)
     parser.add_argument('--experimental', action='store_true',
                         help='Package a separate hardware test even when timing fails.')
+    parser.add_argument('--rom-library', action='store_true', help='Include the eight validated additional ROM profiles.')
     args = parser.parse_args()
-    shortname = 'PocketDreamConsoleFPGA' + ('Test' if args.experimental else '')
+    shortname = ('PocketDreamLibrary' if args.rom_library else 'PocketDreamConsoleFPGA') + ('Test' if args.experimental else '')
     core_id = 'Local.' + shortname
-    out = ROOT / ('dist/pocket-dc-native-experimental' if args.experimental else 'dist/pocket-dc-native')
+    out = ROOT / ('dist/pocket-dc-native-library' if args.rom_library else
+                  'dist/pocket-dc-native-experimental' if args.experimental else 'dist/pocket-dc-native')
     verification = {name: require(name) for name in
                     ('components', 'system-pink', 'system-pdc100',
                      'system-pink-paced', 'system-pdc100-paced',
@@ -73,6 +76,18 @@ def main():
             slow_receipt['script_sha256'] != digest(ROOT / 'tools/fpga/slow-clock-test.sh', 'sha256')):
         raise ValueError('Slow-clock validation is missing, failed or stale.')
     verification['slow_system'] = slow_receipt
+    if args.rom_library:
+        library = json.loads((ROOT / 'build/rom-library-validation.json').read_text())
+        if (not library.get('passed') or library.get('frames_per_rom') != 1800 or
+                library.get('system_inputs') != inputs('system-pink-pocket') or
+                library.get('script_sha256') != digest(ROOT / 'tools/fpga/library-test.py', 'sha256')):
+            raise ValueError('ROM library validation is missing, failed or stale.')
+        for rom in NATIVE_ROMS:
+            asset_hash = validate_native(rom, ROOT / 'build/rom-library/native' / (rom.key + '.rom'))
+            if library['roms'][rom.key] != {'sha256': asset_hash, 'videojet': rom.videojet}:
+                raise ValueError(f'ROM library verification differs: {rom.key}')
+            verification['system-' + rom.key + '-pocket'] = require('system-' + rom.key + '-pocket')
+        verification['library'] = library
 
     rbf = ROOT / 'build/fpga/native/fpga/output_files/ap_core.rbf'
     for filename, _, _, size, _, expected in ROMS:
@@ -87,8 +102,8 @@ def main():
     definition = json.loads((template / 'core.json').read_text())
     definition['core']['metadata'].update(
         platform_ids=['pdc'], shortname=shortname, author='Local', url='',
-        description='PDC30 / PDC100: color LCD and CRT displays',
-        version='0.1.0-display-priority' if args.experimental else '0.1.0-native-preview', date_release='2026-10-12')
+        description='PDC ROM library: color LCD and CRT' if args.rom_library else 'PDC30 / PDC100: color LCD and CRT displays',
+        version='0.2.0-rom-library' if args.rom_library else '0.1.0-display-priority' if args.experimental else '0.1.0-native-preview', date_release='2026-10-12')
     definition['core']['framework']['dock']['supported'] = False
     write_json(core / 'core.json', definition)
     for name in ('audio.json', 'video.json', 'interact.json', 'variants.json'):
@@ -143,6 +158,11 @@ def main():
                 remaining -= len(block)
         write_json(out / 'Assets/pdc' / core_id / f'{label}.json', {'instance': {
             'magic': 'APF_VER_1', 'data_slots': [{'id': 1, 'filename': f'{stem}.rom'}]}})
+    if args.rom_library:
+        for rom in NATIVE_ROMS:
+            shutil.copy2(ROOT / 'build/rom-library/native' / (rom.key + '.rom'), out / 'Assets/pdc/common' / (rom.key + '.rom'))
+            write_json(out / 'Assets/pdc' / core_id / (rom.label + '.json'), {'instance': {
+                'magic': 'APF_VER_1', 'data_slots': [{'id': 1, 'filename': rom.key + '.rom'}]}})
     write_json(out / 'Platforms/pdc.json', {'platform': {
         'category': 'Handheld', 'name': 'Pocket Dream Console', 'year': 2008,
         'manufacturer': 'Conny / VideoJet / Anncia'}})
@@ -167,7 +187,7 @@ def main():
     shutil.copytree(core, extra)
     definition = json.loads((extra / 'core.json').read_text())
     definition['core']['metadata'].update(shortname=shortname + 'Extra',
-        description='PDC30 / PDC100: grayscale, NGP and fluorescent displays')
+        description='PDC library: grayscale and fluorescent' if args.rom_library else 'PDC30 / PDC100: grayscale, NGP and fluorescent displays')
     write_json(extra / 'core.json', definition)
     write_json(extra / 'video.json', video_definition(video, 'extra'))
     shutil.copytree(out / 'Assets/pdc' / core_id, out / 'Assets/pdc' / extra_id)
@@ -183,11 +203,14 @@ def main():
     write_json(out / ('native-experimental-manifest.json' if args.experimental else 'native-manifest.json'),
                {'hardware_verified': False, 'experimental': args.experimental,
                 'display_profiles': {core_id: 'main', extra_id: 'extra'},
+                'rom_count': len(ROMS) + (len(NATIVE_ROMS) if args.rom_library else 0),
+                'rom_library': [rom.key for rom in NATIVE_ROMS] if args.rom_library else [],
                 'memory_check': {'bank_bytes': 8388608, 'passes': 2, 'pink_crc32': '0x0C1DC0F3', 'pdc100_crc32': '0xCCD6C6D3'},
                 'pacing_max_backlog_cycles': 131071, 'pacing_overflow_status_mask': '0x00008000',
                 'diagnostic_clock_khz': 98304, 'sdram_clock_khz': 49152, 'prior_full_system_test_clock_khz': 196608,
                'validation': verification, 'files': files})
-    archive = ROOT / ('dist/pocket-dc-native-experimental.zip' if args.experimental else 'dist/pocket-dc-native-preview.zip')
+    archive = ROOT / ('dist/pocket-dc-native-library.zip' if args.rom_library else
+                      'dist/pocket-dc-native-experimental.zip' if args.experimental else 'dist/pocket-dc-native-preview.zip')
     with zipfile.ZipFile(archive, 'w', zipfile.ZIP_DEFLATED, compresslevel=6) as dest:
         for file in sorted(out.rglob('*')):
             if file.is_file():

@@ -341,11 +341,12 @@ wire [15:0] rom_data;
 wire rom_line_valid;
 wire [255:0] rom_line_data;
 wire [2:0] final_bank, bank;
+wire videojet_controls;
 assign rom_request=check_done ? machine_rom_request : check_rom_request;
 assign rom_address=check_done ? machine_rom_address : check_rom_address;
 
 pdc_rom_check memory_check (
-    .clk(clk_system),.reset(reset_system),.rom_ready,.final_bank,
+    .clk(clk_system),.reset(reset_system),.rom_ready,.final_bank,.loaded_crc(load_crc),.videojet_controls,
     .rom_request(check_rom_request),.rom_address(check_rom_address),.rom_ack,.rom_line_valid,.rom_line_data,
     .done(check_done),.passed(check_passed),.status(check_status),.reset_vector(checked_reset_vector),.first_crc,.second_crc);
 pdc_rom_store store (
@@ -383,7 +384,7 @@ always_ff @(posedge clk_system or posedge reset_system)
     if (reset_system) core_reset<=1;
     else core_reset<=!host_reset_sync[1] || (keys_sync_2[14] && keys_sync_2[15]);
 pdc_system #(.CLOCK_KHZ(98304),.REALTIME(1'b1)) machine (
-    .clk(clk_system),.reset(core_reset),.rom_ready(rom_ready && check_passed),.final_bank,
+    .clk(clk_system),.reset(core_reset),.rom_ready(rom_ready && check_passed),.final_bank,.videojet_controls,
     .buttons({keys_sync_2[9:8],keys_sync_2[15],keys_sync_2[5:0]}),
     .rom_request(machine_rom_request),.rom_address(machine_rom_address),.rom_ack(rom_ack && check_done),.rom_data,.rom_line_valid,.rom_line_data,.pixel_valid,.pixel_ready,.pixel_x,.pixel_y,.pixel_data,
     .audio_valid,.audio_left,.audio_right,.frame_done,.ready(native_ready),.cycle_backlog,.cycle_overflow,

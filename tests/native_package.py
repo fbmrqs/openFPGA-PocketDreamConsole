@@ -5,6 +5,7 @@ import sys
 import unittest
 
 PACKAGE = Path(sys.argv.pop(1))
+MANIFEST = json.loads(next(PACKAGE.glob('native*-manifest.json')).read_text())
 
 
 class NativeSetup(unittest.TestCase):
@@ -38,7 +39,7 @@ class NativeSetup(unittest.TestCase):
                 self.assertGreater(len(bitstream), 0)
                 bitstreams.append(bitstream)
             instances = PACKAGE / 'Assets/pdc' / core.name
-            self.assertEqual(len(list(instances.glob('*.json'))), 2)
+            self.assertEqual(len(list(instances.glob('*.json'))), MANIFEST.get('rom_count', 2))
             for instance in instances.glob('*.json'):
                 slots = json.loads(instance.read_text())['instance']['data_slots']
                 self.assertTrue(all((PACKAGE / 'Assets/pdc/common' / slot['filename']).is_file() for slot in slots))

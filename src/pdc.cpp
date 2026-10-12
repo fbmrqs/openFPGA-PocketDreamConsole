@@ -1,12 +1,13 @@
 #include "pdc.h"
 
-Pdc::Pdc(const char* path) : chip_(VideoTiming::NTSC, *this) {
+Pdc::Pdc(const char* path, bool videojet_controls) : videojet_controls_(videojet_controls), chip_(VideoTiming::NTSC, *this) {
   file_ = fopen(path, "rb");
   if (!file_ || fseek(file_, 0, SEEK_END) != 0) return;
   const long bytes = ftell(file_);
   // MAME ignores the unused upper half of the PDC100 physical dump.
   if (bytes == 0x8000000 || bytes == 0x4000000) bank_count_ = 8;
   else if (bytes == 0x1000000) bank_count_ = 2;
+  else if (bytes == 0x800000) bank_count_ = 1;
   else return;
   rom_ = static_cast<uint16_t*>(malloc(BankBytes));
   if (!rom_) return;
@@ -55,10 +56,11 @@ void Pdc::SetPortA(Word value, Word) {
 }
 
 Word Pdc::GetPortA() {
+  if (videojet_controls_) return 0;
   return ((buttons_ & L) ? 0x0100 : 0) | ((buttons_ & R) ? 0x1000 : 0);
 }
 
 Word Pdc::GetPortB() {
   return (buttons_ & (Up | Down | Left | A | B | Pause)) |
-         ((buttons_ & Right) ? 0x0080 : 0);
+         ((buttons_ & Right) ? (videojet_controls_ ? 0x0008 : 0x0080) : 0);
 }

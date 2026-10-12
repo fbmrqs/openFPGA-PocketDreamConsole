@@ -93,9 +93,10 @@ the ordering correction in simulation; Pot Pit still needs physical comparison.
 
 ## Other ROM sets
 
-Only **PDC30 Pink and PDC100** are accepted and hardware-tested today. The loader
-checks their exact memory CRCs; another dump is intentionally stopped even if
-it has the same size. Do not bypass the integrity check to try other ROMs.
+Only **PDC30 Pink and PDC100** are hardware-tested today. The existing installed
+core accepts only those two profiles. The separate library candidate adds
+eight verified dump profiles; its FPGA timing and per-ROM validation must pass
+before their launch entries are installed. Do not bypass integrity checks.
 
 These eleven additional sets appear in
 [MAME's PDC driver](https://github.com/mamedev/mame/blob/master/src/mame/tvgames/spg2xx_pdc.cpp).
@@ -115,10 +116,34 @@ They are candidates for new profiles, not promised compatible games.
 | PDC40 Touch | `pdc_5060.bin` | 64 | Touchscreen/ADC/input profile |
 | PDC150 Touch | `pdc5070.bin` | 128 | Larger-ROM banking and touchscreen profile |
 
-No publisher-authorized download source was found. No additional commercial
-ROMs have been downloaded. Owner-provided dumps or authorized download links
-are needed; the user will supply their own dumps. Verify file identities and
-test new profiles before packaging.
+The user supplied all eleven archives locally. Their exact member sizes and
+SHA-1 identities were verified. Original dump copies are installed under
+`Assets/pdc/dumps/<set>/` on the card; those files are archival copies, not launch
+entries. The supplied archives are unchanged and ROM data remains Git-ignored.
+
+`tools/rom_library.py` imports these sets reproducibly. PDC50 and Oui-Oui retain
+their 16 MiB images. Dora and TMNT retain their 8 MiB images. VideoJet images
+are zero-filled to the 8 MiB region used by MAME, rather than repeating data.
+VideoJet Right uses GPIO bit 3 instead of bit 7 and its trigger inputs are absent.
+The library loader accepts 8/16/64 MiB files, identifies a known startup-bank
+CRC from the independent loading tap, and requires both fresh readback sweeps
+to match it before starting the CPU. Unknown identities remain blocked.
+
+The eight new profiles require full real-bank readback tests and independent
+1,800-frame CPU, banking, video and stereo comparisons using the production
+clock and Pocket output buffers. The package checks the ROM hashes, validation
+fingerprints and timing evidence again before writing any launch entries.
+It uses a separate `PocketDreamLibraryTest` entry, preserving the original
+hardware-confirmed entry. The frozen library candidate is `build/native-rom-library-workspace`.
+The queued library fit waits for the existing display
+fit; it does not start a second Quartus job concurrently.
+
+PDC40 Touch still needs address-bit descrambling and tactile GPIO/ADC controls.
+PDC150 Touch and PDC200 need data-bit descrambling and 128 MiB ROM access;
+their images are not duplicates that can safely be truncated to 64 MiB.
+PDC150 also needs tactile GPIO/ADC controls. These three have no launch entries
+until those capabilities exist and are tested. Simply copying the dumps cannot
+make the existing core run them.
 Other Sunplus consoles do not become compatible simply by sharing the μnSP CPU.
 
 ## Save-state feasibility

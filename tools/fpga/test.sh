@@ -3,7 +3,7 @@ set -euo pipefail
 cd "$(dirname "$0")/../.."
 mkdir -p build/rtl/cpu
 python3 tools/fpga/evidence.py begin components
-verilator --cc --exe --build -j 8 -MAKEFLAGS 'OPT_FAST=-O3' --top-module pdc_rom_check -GBANK_WORDS_BITS=8 "-GVECTOR_LINE=22'h000030" -GPINK_CRC=891097517 -GPDC100_CRC=2605946556 \
+verilator --cc --exe --build -j 8 -MAKEFLAGS 'OPT_FAST=-O3' --top-module pdc_rom_check -GBANK_WORDS_BITS=8 "-GVECTOR_LINE=22'h000030" -GSINGLE_CRC=1553444405 -GPINK_CRC=891097517 -GPDC100_CRC=2605946556 \
   --Mdir build/rtl/rom-check -CFLAGS '-std=c++20 -O2' \
   rtl/pocket/pdc_rom_check.sv "$PWD/tests/rtl/rom_check.cpp" > build/rtl/rom-check-build.log 2>&1
 build/rtl/rom-check/Vpdc_rom_check

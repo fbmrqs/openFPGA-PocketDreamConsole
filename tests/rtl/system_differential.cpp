@@ -18,15 +18,17 @@
 #include "pocket_outputs.h"
 #endif
 int main(int argc,char** argv) {
-    if (argc<3 || argc>4) return 2;
-    const bool paced=argc==4 && std::strcmp(argv[3],"paced")==0;
-    const bool native_latency=paced || (argc==4 && std::strcmp(argv[3],"native-latency")==0);
+    if (argc<3 || argc>5) return 2;
+    const bool videojet=argc==5 && std::strcmp(argv[4],"videojet")==0;
+    if(argc==5 && !videojet)return 2;
+    const bool paced=argc>=4 && std::strcmp(argv[3],"paced")==0;
+    const bool native_latency=paced || (argc>=4 && std::strcmp(argv[3],"native-latency")==0);
     const unsigned limit=unsigned(std::strtoul(argv[2],nullptr,10));
-    Pdc reference(argv[1]);if (!reference.Ready()) return 2;
+    Pdc reference(argv[1],videojet);if (!reference.Ready()) return 2;
     FILE* file=std::fopen(argv[1],"rb");if (!file) return 2;
     const size_t words=size_t(reference.BankCount())*0x400000;
     std::vector<uint16_t> rom(words);if (std::fread(rom.data(),2,words,file)!=words) return 2;std::fclose(file);
-    Vpdc_system dut;dut.pixel_ready=1;dut.rom_line_valid=native_latency;AudioResampler resampler;
+    Vpdc_system dut;dut.videojet_controls=videojet;dut.pixel_ready=1;dut.rom_line_valid=native_latency;AudioResampler resampler;
     #ifdef PDC_POCKET_OUTPUTS
     PocketOutputs outputs;
     #endif

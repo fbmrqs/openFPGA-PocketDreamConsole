@@ -15,7 +15,7 @@ module system_bus_tb;
         else if (!rom_request) rom_release<=0;
         else if (!rom_release) begin rom_ack<=1;rom_release<=1;end
     end
-    pdc_system dut(.clk,.reset,.rom_ready(1'b1),.final_bank(3'b0),.buttons(9'b0),
+    pdc_system dut(.clk,.reset,.rom_ready(1'b1),.final_bank(3'b0),.videojet_controls(1'b0),.buttons(9'b0),
         .rom_request,.rom_address,.rom_ack,.rom_data(16'b0),.rom_line_valid(1'b1),.rom_line_data,
         .pixel_ready(1'b1),.ready);
     integer access_client=0;

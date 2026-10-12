@@ -15,7 +15,7 @@
 int main() {
     Pdc reference("pdc_pink.u2");
     if (!reference.Ready()) return 2;
-    Vpdc_io dut;
+    Vpdc_io dut;dut.videojet_controls=0;
     std::mt19937 random{0x54494d45};
     bool watchdog_seen=false;
     auto tick=[&] {dut.clk=0;dut.eval();dut.clk=1;dut.eval();watchdog_seen|=dut.watchdog_reset;};
@@ -175,4 +175,16 @@ int main() {
         }
     }
     std::printf("IO timers: %u register/IRQ snapshots across dividers, timebases, overflow, counter reset, ADC and FIQ selection matched\n",snapshots);
+    for(unsigned tv=0;tv<2;tv++) {
+        dut.reset=1;tick();dut.reset=0;dut.videojet_controls=tv;
+        for(unsigned buttons=0;buttons<512;buttons++) {
+            dut.buttons=buttons;dut.address=0x3d06;dut.eval();
+            unsigned expected=(buttons&0x77)|((buttons&8) ? (tv ? 8 : 128) : 0);
+            if(dut.read_data!=expected){std::fprintf(stderr,"IO input profile %u buttons %03x\n",tv,buttons);return 1;}
+            dut.address=0x3d01;dut.eval();
+            expected=tv ? 0 : ((buttons&128) ? 0x100 : 0)|((buttons&256) ? 0x1000 : 0);
+            if(dut.read_data!=expected)return 1;
+        }
+    }
+    std::puts("PDC and VideoJet input profiles: all 512 button combinations passed");
 }

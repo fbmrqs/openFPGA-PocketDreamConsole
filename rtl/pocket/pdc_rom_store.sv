@@ -47,7 +47,7 @@ module pdc_rom_store (
     logic [2:0] selected_bank;
     logic load_start, fifo_reset, data_write, write_full, write_empty, write_pop, write_valid;
     logic [56:0] write_packet;
-    assign slot_ok = slot_size==32'h01000000 || slot_size==32'h04000000;
+    assign slot_ok = slot_size==32'h00800000 || slot_size==32'h01000000 || slot_size==32'h04000000;
     assign load_start = slot_write && !slot_write_delayed && slot_id==1;
     assign fifo_reset = reset || load_start;
     assign data_write = bridge_write && bridge_address[31:26]==6'h04;
@@ -59,7 +59,7 @@ module pdc_rom_store (
             if (load_start) begin
             generation<=!generation;complete<=0;bridge_fault<=!slot_ok;
             expected_words<=slot_size[26:2];received_words<=0;
-            selected_bank<=slot_size==32'h01000000 ? 3'd1 : 3'd7;
+            selected_bank<=slot_size==32'h00800000 ? 3'd0 : slot_size==32'h01000000 ? 3'd1 : 3'd7;
             end else begin
             if (data_write) begin
                 if (write_full || bridge_address[1:0]!=0 || {1'b0,bridge_address[25:2]}!=received_words || received_words>=expected_words)
