@@ -312,3 +312,21 @@ A PDC implementation should:
 The baseline uses 88% of logic and 94% of block RAM, so state storage and pause
 logic need careful sizing and the same timing gates. This is a separate feature
 project rather than a JSON setting for the graphics correction.
+
+## Qualification resume: sound timing endpoints
+
+The qualified candidate passed both original 1,800-frame production-output
+runs, all component checks, and the PDC50, TMNT and VideoJet 1–4 runs.
+Oui-Oui and Dora remain excluded after their independent failures.
+Compilation stopped during the post-synthesis constraint audit because the
+sound-read exclusions still named the previous local address registers.
+The prepared read implementation uses `wave_select` and `pitch_select`
+instead. Both selector groups must exist and remain timed for one clock;
+the corrected audit verifies them without relaxing their timing.
+
+The hardware-test workspace resumes from the existing mapped design. No HDL,
+ROM, simulator or test source changes accompany this constraint correction.
+Reused simulation evidence retains its original input hashes and provenance;
+only the constraint hash is updated after checking that it is the sole change.
+Physical fit, assembly and four-corner timing analysis are rerun. No new
+binary or card installation has been confirmed yet.

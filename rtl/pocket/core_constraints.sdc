@@ -82,8 +82,8 @@ set_false_path -from [get_registers {*}] -to [get_ports bridge_1wire]
 # Registered sound reads consume their address after one clock and are
 # excluded from the access-update exception. Other reads retain one-clock timing.
 set sound_read_payloads [get_registers {*|spu_address[*]}]
-set sound_read_registers [get_registers {*|spu|channel_read* *|spu|global_read* *|spu|read_capture*local_*}]
-foreach pattern {*|spu|channel_read* *|spu|global_read* *|spu|read_capture*local_*} {
+set sound_read_registers [get_registers {*|spu|channel_read* *|spu|global_read* *|spu|read_capture*wave_select* *|spu|read_capture*pitch_select*}]
+foreach pattern {*|spu|channel_read* *|spu|global_read* *|spu|read_capture*wave_select* *|spu|read_capture*pitch_select*} {
     if {[get_collection_size [get_registers $pattern]] == 0} {
         error "Missing single-clock sound-read timing endpoints: $pattern"
     }
