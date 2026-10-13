@@ -259,6 +259,9 @@ module unsp_cpu (
         cycles <= elapsed;
         retired <= 1;
         state <= BOUNDARY;
+        // These ALU destinations preserve CS:PC, so start its idle fetch now.
+        if (prefetch_enable && state[$clog2(ALU)] && rd<6 && (pc<22'h2800 || pc>=22'h4000))
+            read_word(pc,PREFETCH_DONE);
     endtask
     task automatic illegal;
         fault = 1;
@@ -282,6 +285,7 @@ module unsp_cpu (
         logic [2:0] fetched_rd,fetched_rs;
         logic [5:0] fetched_mode;
         fetched_op=word[15:12];fetched_rd=word[11:9];fetched_rs=word[2:0];fetched_mode=word[8:3];
+        interrupt_entry=0;
         instruction_pc<={r[6][5:0],r[7]};
         iw<=word;op<=fetched_op;rd<=fetched_rd;rs<=fetched_rs;mode<=fetched_mode;
         alu_select<={fetched_op==11 || fetched_op==12,fetched_op==10,fetched_op==9,

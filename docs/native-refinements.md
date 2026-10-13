@@ -5,11 +5,12 @@ The recovery baseline is commit `8338dc7`, tag
 on Pocket in both PDC30 Pink and PDC100. New source changes require fresh
 simulation, four-corner timing, package verification and a Pocket test.
 
-The previous frozen follow-up attempt, `build/native-combined-workspace`, stopped
-at its Oui-Oui smoke gate before FPGA compilation. There is no completed display
-installation: its install status is blocked and `display_install` is null.
+The previous frozen follow-up attempts, `build/native-combined-workspace` and
+`build/native-mix-workspace`, stopped at their Oui-Oui smoke gates before FPGA
+compilation. Neither completed a display installation: their install statuses
+are blocked and `display_install` is null.
 The working card core remains unchanged. The next candidate is
-`build/native-mix-workspace`. Its runner
+`build/native-prefetch-workspace`. Its runner
 performs all validation gates, packages both display entries, verifies and
 flushes installation only on the previously identified Pocket card, and shows
 a window alert for completion, failure or a required card connection. It never
@@ -73,8 +74,9 @@ Dora then passed 180 frames with CPU, banking, pixels and stereo audio matching,
 with maximum cycle backlog 39,374 instead of overflow at 131,071. Simulated
 cache tests and Quartus memory-primitive tests cover alias separation, delayed
 reads, atomic line fills and invalidation. Full-length game checks remain
-mandatory. The build waits for the Oui-Oui replay to pass frame 966 before
-starting Quartus. That replay still overflowed at frame 966 with the new cache
+mandatory. The first combined attempt waited for the Oui-Oui replay to pass
+frame 966 before starting Quartus. That replay still overflowed at frame 966
+with the new cache
 mapping, so the combined attempt stopped before compilation. Targeted per-frame
 profiling is investigating this separate workload; the Dora result does not
 establish compatibility for Oui-Oui. The library checker records every game's outcome rather
@@ -96,6 +98,31 @@ sound differential still matches 251,851 stereo samples and 288,000
 register/IRQ snapshots. This adds a multiply/accumulate timing path, so both
 the original Oui-Oui replay and a fresh four-corner physical fit are required.
 No performance or timing gate is relaxed.
+
+The mixed-sound candidate still overflowed, now at frame 975. This improved the
+failure point but did not resolve the sustained overload. Nothing was compiled
+or installed. The next candidate starts an eligible next-opcode read on ALU
+retirement, one clock before the old idle-fetch path. Only destinations that
+preserve CS:PC use this path; MMIO fetches and other control-flow cases retain
+their existing handling. Interrupt decisions still happen after peripherals
+settle, and an interrupt can discard the speculative read.
+
+A continuous CPU regression cost 884 clocks before this change and 778 after
+it, against an 820-clock budget. The IRQ/FIQ variant checks architectural state,
+modeled cycles, stack accesses and discarded reads. It also exposed a stale
+`interrupt_entry` flag when prefetch decoding bypassed BOUNDARY; actual opcode
+decoding now clears that flag. All 184,035 CPU differential cases pass with
+randomized 0–7-clock replies, including early prefetch across operand forms.
+Short production-output checks pass for Pink and PDC100 at 20 frames each, and
+Dora at 110 frames with maximum modeled backlog 22,712. Those checks retain
+CPU/banking/pixel/stereo comparisons and physical output-buffer assertions.
+Full system replays and new physical timing remain mandatory.
+
+The display package's compile/install gates now depend on its two original ROMs,
+component checks, clock smoke test and four-corner timing. Extra-ROM failures
+are recorded independently, so they cannot cancel a valid display update. The
+library retains all eight complete readback/system checks; failed or stale
+library evidence still blocks its packaging and installation.
 
 The four VideoJet sets each passed an initial 20-frame Pocket-output comparison.
 These short checks do not replace their required 1,800-frame validation or

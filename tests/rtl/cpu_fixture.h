@@ -48,7 +48,8 @@ struct Rig {
     void tick() {
         dut.clk=0; dut.eval();
         dut.bus_ack=0;dut.ds_write=0;
-        if (dut.bus_valid) {
+        if (dut.reset) pending=false;
+        else if (dut.bus_valid) {
             Access current{dut.bus_write,dut.bus_addr,dut.bus_wdata};
             if (!pending) {pending=true;held=current;delay=int(random()%8);}
             if (current!=held) {std::fprintf(stderr,"Bus request changed during wait\n");std::exit(1);}
@@ -77,7 +78,7 @@ struct Rig {
         if (dut.rootp->unsp_cpu__DOT__state!=(uint64_t{1}<<2)) std::abort();
         accesses.clear();
     }
-    void step(bool prefetch=false) {
+    void step(bool prefetch=false,bool early_prefetch=false) {
         accesses.clear(); cursor=0;
         dut.prefetch_enable=prefetch;dut.run=0;
         if (prefetch) {
@@ -87,7 +88,7 @@ struct Rig {
                 std::fprintf(stderr,"Instruction prefetch timeout\n");std::exit(1);
             }
         }
-        dut.prefetch_enable=0;dut.run=1;
+        dut.prefetch_enable=early_prefetch;dut.run=1;
         for (int n=0;n<4000;n++) {
             tick();
             if (dut.fault) {std::fprintf(stderr,"Unexpected fault pc=%06x opcode=%04x\n",dut.fault_pc,dut.fault_opcode);std::exit(1);}

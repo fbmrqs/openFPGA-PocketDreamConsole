@@ -39,7 +39,7 @@ int main() {
             uint32_t pc=reference.GetCsPc();
             reference_memory.words[pc]=rig.memory.words[pc]=instruction;
             reference_memory.words[(pc+1)&0x3fffff]=rig.memory.words[(pc+1)&0x3fffff]=uint16_t(random());
-            rig.dut.eval();reference.Step();rig.step(variant==1);rig.compare(recorder,++cases,instruction);
+            rig.dut.eval();reference.Step();rig.step(variant==1,variant==2);rig.compare(recorder,++cases,instruction);
         }
     }
     // Interrupt priority, nesting, and return state are independent of opcode coverage.
@@ -59,5 +59,37 @@ int main() {
         if (!rig.dut.fault || rig.dut.fault_pc!=0x5000 || rig.dut.fault_opcode!=invalid) return 1;
         for (int n=0;n<16;n++) {rig.tick();if (rig.dut.bus_valid || rig.dut.retired) return 1;}
     }
-    std::printf("CPU differential: %u cases passed, randomized 0–7 clock bus latency and prefetched instructions\n",cases);
+    for(bool interrupt_test : {false,true}) {
+        rig.replay=nullptr;rig.random.seed(0x4541524c);
+        rig.memory.words.clear();reference_memory.words.clear();
+        reference.Reset();reference_memory.words[0xfff7]=rig.memory.words[0xfff7]=0x5000;
+        reference.Reset();rig.reset();
+        reference.regs_[0]=rig.dut.rootp->unsp_cpu__DOT__r[0]=0x1800;
+        reference.irq_enable_=reference.fiq_enable_=true;
+        rig.dut.rootp->unsp_cpu__DOT__irq_enable=rig.dut.rootp->unsp_cpu__DOT__fiq_enable=1;
+        for(unsigned pc=0x5000;pc<0x5200;pc++)reference_memory.words[pc]=rig.memory.words[pc]=0x0241;
+        for(unsigned vector : {0xfff6u,0xfff8u})reference_memory.words[vector]=rig.memory.words[vector]=0x6000;
+        reference_memory.words[0x6000]=rig.memory.words[0x6000]=0x9a98;
+        rig.dut.prefetch_enable=1;unsigned clocks=0;
+        for(unsigned step=0;step<128;step++) {
+            bool irq=interrupt_test && step==32,fiq=interrupt_test && step==64;
+            reference.SetIrq(0,irq);reference.SetFiq(fiq);rig.dut.irq=irq;rig.dut.fiq=fiq;
+            unsigned pc=reference.GetCsPc();reference.Step();rig.dut.run=1;
+            unsigned timeout=0;
+            do {rig.tick();clocks++;if(++timeout>4000 || rig.dut.fault)return 1;}while(!rig.dut.retired);
+            // An interrupt may discard exactly one speculative opcode read.
+            if(recorder.interrupt && !rig.accesses.empty() &&
+                !std::get<0>(rig.accesses.front()) && std::get<1>(rig.accesses.front())==pc)
+                rig.accesses.erase(rig.accesses.begin());
+            rig.compare(recorder,++cases,recorder.interrupt ? 0 : 0x0241);
+            rig.accesses.clear();rig.dut.run=0;
+            if(step!=127)for(unsigned gap=0;gap<2;gap++){rig.tick();clocks++;}
+        }
+        if(!interrupt_test && clocks>820){std::fprintf(stderr,"Continuous ALU stream costs %u clocks (budget 820)\n",clocks);return 1;}
+        std::printf("Continuous CPU stream: %u clocks, interrupts %s\n",clocks,interrupt_test ? "enabled" : "absent");
+        rig.dut.prefetch_enable=0;rig.dut.run=0;
+        for(unsigned drain=0;rig.dut.bus_valid && drain<100;drain++)rig.tick();
+        if(rig.dut.bus_valid || rig.pending)return 1;
+    }
+    std::printf("CPU differential: %u cases passed, randomized 0–7 clock bus latency and idle/early instruction prefetch\n",cases);
 }

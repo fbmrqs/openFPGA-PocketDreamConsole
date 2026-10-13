@@ -159,7 +159,7 @@ module pdc_system #(
     assign sprite_dma_done = dma_done && dma_sprite;
 
     unsp_cpu cpu(
-        .clk, .reset(cpu_reset), .run, .prefetch_enable(advance || scheduler==WAIT_PERIPHERALS),
+        .clk, .reset(cpu_reset), .run, .prefetch_enable(advance || scheduler==EXECUTE || scheduler==WAIT_PERIPHERALS),
         .irq(cpu_irq), .fiq(cpu_fiq), .ds_write, .ds_value, .ds, .pc(cpu_pc),
         .bus_valid(requests[0]), .bus_write(writes[0]), .bus_external(cpu_bus_external), .bus_addr(addresses[21:0]), .bus_wdata(write_values[15:0]),
         .bus_ack(cpu_response_rom ? cpu_rom_ack : acks[0]), .bus_rdata(cpu_response_rom ? cpu_rom_data : shared_data),
