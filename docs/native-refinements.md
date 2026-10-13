@@ -5,10 +5,11 @@ The recovery baseline is commit `8338dc7`, tag
 on Pocket in both PDC30 Pink and PDC100. New source changes require fresh
 simulation, four-corner timing, package verification and a Pocket test.
 
-The latest frozen follow-up attempt, `build/native-combined-workspace`, stopped
+The previous frozen follow-up attempt, `build/native-combined-workspace`, stopped
 at its Oui-Oui smoke gate before FPGA compilation. There is no completed display
 installation: its install status is blocked and `display_install` is null.
-The working card core remains unchanged. Its runner
+The working card core remains unchanged. The next candidate is
+`build/native-mix-workspace`. Its runner
 performs all validation gates, packages both display entries, verifies and
 flushes installation only on the previously identified Pocket card, and shows
 a window alert for completion, failure or a required card connection. It never
@@ -78,6 +79,27 @@ mapping, so the combined attempt stopped before compilation. Targeted per-frame
 profiling is investigating this separate workload; the Dora result does not
 establish compatibility for Oui-Oui. The library checker records every game's outcome rather
 than abandoning later games after the first failure.
+
+Oui-Oui also overflowed at frame 966 with the Pocket output buffers removed.
+The production-output profile showed no pixel stalls and only ordinary
+1,024-word sprite DMA transfers near the failure. CPU cache conflicts contribute,
+but replaying 1,490,338 captured line requests showed that a better index alone
+would provide limited savings. The sound workload grows to several concurrent
+voices in the failing scene; muted voices are rare.
+
+The next candidate combines the per-voice pan multiplication and accumulation
+in one internal clock, retaining the same signed widths, shifts and rounding.
+It preserves all decoder, phase, envelope, register and interrupt updates.
+A dense 16-voice regression matched samples but failed its 125-clock budget
+at 135 clocks before the change; it now takes 119 clocks. The complete focused
+sound differential still matches 251,851 stereo samples and 288,000
+register/IRQ snapshots. This adds a multiply/accumulate timing path, so both
+the original Oui-Oui replay and a fresh four-corner physical fit are required.
+No performance or timing gate is relaxed.
+
+The four VideoJet sets each passed an initial 20-frame Pocket-output comparison.
+These short checks do not replace their required 1,800-frame validation or
+hardware testing.
 
 ## Startup and reset picture
 

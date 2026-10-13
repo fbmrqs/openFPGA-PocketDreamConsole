@@ -36,6 +36,23 @@ int main() {
     if(actual.size()!=silent.size())return 1;
     for(size_t n=0;n<actual.size();n++)if(actual[n]!=silent[n])return 1;
     std::printf("Silent sound update: %u clocks (budget 12)\n",silent_clocks);
+    // A dense sustained chord exercises mixing without ROM-fetch latency.
+    reference.Reset();dut.reset=1;tick();dut.reset=0;tick();actual.clear();
+    for (unsigned voice=0;voice<16;voice++) {
+        write(0x3003+voice*16,0x407f);write(0x3005+voice*16,127);
+        write(0x3200+voice*16,0);write(0x3204+voice*16,0);
+    }
+    write(0x3415,0xffff);write(0x3400,0xffff);write(0x3401,127);
+    for (unsigned voice=0;voice<16;voice++) {
+        write(0x3009+voice*16,0x8800);write(0x300b+voice*16,0x8800);
+    }
+    reference.Chip().spu_.RunCycles(96);auto chord=reference.Chip().GetAudio();
+    dut.advance=1;dut.cycles=96;tick();dut.advance=0;
+    unsigned chord_clocks=0;while(dut.busy && chord_clocks<200){tick();chord_clocks++;}
+    if(actual.size()!=chord.size())return 1;
+    for(size_t n=0;n<actual.size();n++)if(actual[n]!=chord[n])return 1;
+    if(dut.busy || chord_clocks>125){std::fprintf(stderr,"Dense sound update costs %u clocks (budget 125)\n",chord_clocks);return 1;}
+    std::printf("Dense sound update: %u clocks (budget 125)\n",chord_clocks);
     unsigned compared=0;
     for (unsigned fixture=0;fixture<72;fixture++) {
         reference.Reset();pending=false;dut.reset=1;tick();dut.reset=0;

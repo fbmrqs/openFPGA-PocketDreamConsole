@@ -98,7 +98,6 @@ module pdc_spu #(parameter logic ADDRESS_LOOKAHEAD = 0) (
         BLEND = 39'd1 << 13,
         ENVELOPE_SCALE = 39'd1 << 14,
         PAN_SCALE = 39'd1 << 15,
-        ADD_MIX = 39'd1 << 16,
         OUTPUT_SCALE = 39'd1 << 17,
         OUTPUT_OFFSET = 39'd1 << 18,
         GAIN_INPUT = 39'd1 << 19,
@@ -622,9 +621,6 @@ module pdc_spu #(parameter logic ADDRESS_LOOKAHEAD = 0) (
                 state[$clog2(PAN_SCALE)]: begin
                     left_product=31'(mixed_sample)*$signed({1'b0,left_gain});
                     right_product=31'(mixed_sample)*$signed({1'b0,right_gain});
-                    state<=ADD_MIX;
-                end
-                state[$clog2(ADD_MIX)]: begin
                     left_mix = left_mix+32'(left_product>>>14);
                     right_mix = right_mix+32'(right_product>>>14);
                     advance_channel(); state<= CHANNEL;
