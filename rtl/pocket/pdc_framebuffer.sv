@@ -89,6 +89,7 @@ module pdc_framebuffer (
     logic [1:0] reading, read_received, read_launch;
     logic [29:0] read_pair;
     logic [1:0] write_pulse, read_pulse;
+    (* preserve, dont_merge *) logic scan_read_room, scan_push_room;
     wire write_chip=held_pixel[15];
     typedef enum logic [2:0] {IDLE, GET_PIXEL, WRITE_PIXEL, LAUNCH, COMMIT} writer_t;
     writer_t writer;
@@ -114,8 +115,17 @@ module pdc_framebuffer (
     generate for (chip=0;chip<2;chip=chip+1) begin : read_requests
         assign read_launch[chip]=!frame_boundary && clear_scan==0 && display_valid &&
             !reading[chip] && !read_received[chip] && !memory_busy[chip] &&
-            !write_pulse[chip] && !read_pulse[chip] && !scan_full && scan_level<16380 && read_address<76800;
+            !write_pulse[chip] && !read_pulse[chip] && scan_read_room && read_address<76800;
     end endgenerate
+    // Reserve room for the registered decision and the pending FIFO write.
+    // Stale occupancy is conservative when the video side drains the FIFO.
+    always_ff @(posedge memory_clk or posedge reset_memory) begin
+        if (reset_memory) begin scan_read_room<=0;scan_push_room<=0;end
+        else begin
+            scan_read_room<=clear_scan==0 && !scan_full && scan_level<16378;
+            scan_push_room<=clear_scan==0 && !scan_full && scan_level<16380;
+        end
+    end
     always_ff @(posedge memory_clk or posedge reset_memory) begin
         if (reset_memory) begin
             frame_sync<=0;seen_frame<=0;front_buffer<=2;write_buffer<=0;queued_frames<=0;read_received<=0;read_pair<=0;
@@ -146,7 +156,7 @@ module pdc_framebuffer (
                         read_pulse[chip]<=1;reading[chip]<=1;
                     end
                 end
-                if (read_received==2'b11 && !scan_full && scan_level<16382) begin
+                if (read_received==2'b11 && scan_push_room) begin
                     scan_input<=read_pair[read_address[0]*15 +:15];scan_push<=1;
                     read_address<=read_address+17'd1;
                     if (read_address[0]) begin

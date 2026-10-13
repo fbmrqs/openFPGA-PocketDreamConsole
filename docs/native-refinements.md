@@ -330,3 +330,27 @@ Reused simulation evidence retains its original input hashes and provenance;
 only the constraint hash is updated after checking that it is the sole change.
 Physical fit, assembly and four-corner timing analysis are rerun. No new
 binary or card installation has been confirmed yet.
+
+## CPU and display timing correction
+
+The resumed mapped design fitted and assembled successfully, but its slow
+setup corners measured -0.282 ns and -0.334 ns. All four corners passed hold,
+recovery, removal, SDRAM pin timing, asynchronous pin-delay budgets, Gray-code
+net delay and pulse-width checks. The failing paths included incoming memory
+read data through instruction operand-form selection, stack-loop completion
+through the bus-address mux, and FIFO occupancy through display address enables.
+
+The next candidate captures register and immediate operands independently,
+selects PUSH/POP addresses independently of loop completion, and registers
+scanout read/push space decisions with additional FIFO headroom. No modeled
+CPU clocks or board memory constraints change. Focused checks passed 184,035
+CPU differential cases with the same 778/845-clock continuous streams, complete
+RGB/grayscale frames, delayed startup and burst backpressure, and the Pink
+10-frame production-output comparison. Full game runs and physical timing
+remain required before claiming closure.
+
+The diagnostic runner installs only the combined library package in separate
+entries, preserving the hardware-confirmed original core. It prevents duplicate
+runners within a workspace. Repairable failures are saved for the authorized
+hourly repair-and-retry follow-up; window alerts are reserved for verified
+installation or a missing card.

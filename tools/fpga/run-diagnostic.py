@@ -1,6 +1,6 @@
 """Collect independent checks, then build and install only qualified packages."""
 from pathlib import Path
-import argparse, json, os, plistlib, subprocess, sys, time
+import argparse, fcntl, json, os, plistlib, subprocess, sys, time
 
 root=Path(__file__).resolve().parents[2]
 card=Path('/Volumes/POCKET')
@@ -107,7 +107,7 @@ def install_package(library):
 
 def main():
     save('diagnostic-build-status.json',state='validating',clock_khz=98304,
-        change='Dora-only graphics hash; prepared address/read paths; independent validation results')
+        change='CPU operand/address timing; prepared framebuffer space; display fixes and ROM profiles')
     save('diagnostic-install-status.json',state='waiting_for_package',card=str(card))
     start_job('components',['bash','tools/fpga/test.sh'])
     start_job('clock-smoke',['bash','tools/fpga/slow-clock-test.sh'])
@@ -137,7 +137,8 @@ def main():
         env=dict(os.environ,PDC_QUARTUS_VOLUME='pdc-quartus-25.1',PDC_QUARTUS_EMULATOR='qemu')
         if run('quartus',['bash','tools/fpga/quartus.sh','native'],env):
             timing_error='FPGA build/timing failed; see '+str(root/'quartus.log')
-        else:installed=install_package(False)
+        # The combined library package includes both original ROMs and display
+        # changes. Its separate entries preserve the confirmed working core.
     save('diagnostic-build-status.json',state='collecting_library',core_failures=core_errors,
         timing_error=timing_error,display_installed=installed)
     if 'rom-library' in jobs:wait_jobs(['rom-library'])
@@ -146,21 +147,21 @@ def main():
     library_installed=False
     if not core_errors and not timing_error and library.get('completed') and library.get('roms'):
         library_installed=install_package(True)
+        installed=library_installed
     if core_errors or timing_error:
         save('diagnostic-build-status.json',state='blocked',core_failures=core_errors,timing_error=timing_error,
             roms_passed=list(library.get('roms',{})),rom_failures=library.get('failures',{}))
         save('diagnostic-install-status.json',state='blocked',card=str(card),display_installed=False,
             core_failures=core_errors,timing_error=timing_error,roms_passed=list(library.get('roms',{})),rom_failures=library.get('failures',{}))
-        alert('Pocket build needs attention','All independent tests have finished; their results were saved.\n\n'+
-            '\n'.join([name+' failed: '+log for name,log in core_errors.items()]+([timing_error]if timing_error else[]))+
-            '\n\nExtra ROMs passed: '+(', '.join(library.get('roms',{}))or 'none')+'.\nThe card is not confirmed ready. The working core is preserved.')
+        print('Build failed; exact results saved for the hourly repair follow-up. '
+              'No new core installed; the working core is preserved.',flush=True)
     else:
         save('diagnostic-build-status.json',state='complete',hardware_verified=False,rom_failures=library.get('failures',{}))
         save('diagnostic-install-status.json',state='installed'if installed else 'needs_card',card=str(card),
-            display_installed=installed,library_installed=library_installed,writes_flushed=installed,
+            display_installed=False,library_installed=library_installed,writes_flushed=installed,
             ejected=False,rom_failures=library.get('failures',{}))
         if not library.get('roms'):
-            alert('Pocket extra ROM checks finished','No additional ROM passed all checks. Their failures were logged; the independently validated display package is unaffected.')
+            print('No additional ROM passed; results saved for the hourly repair follow-up.',flush=True)
 
 
 if __name__=='__main__':
@@ -168,10 +169,13 @@ if __name__=='__main__':
     parser.add_argument('--card',type=Path,default=card)
     parser.add_argument('--card-uuid',required=True,help='Previously verified card volume UUID.')
     arguments=parser.parse_args();card=arguments.card;card_uuid=arguments.card_uuid
+    lock=(root/'diagnostic-run.lock').open('a')
+    try:fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
+    except BlockingIOError:raise SystemExit('A diagnostic runner already owns this workspace; leave it running.')
     try:main()
     except Exception as error:
         save('diagnostic-build-status.json',state='failed',reason=str(error))
         save('diagnostic-install-status.json',state='blocked',reason=str(error),
             display_install=json.loads((root/'diagnostic-display-install-status.json').read_text())if(root/'diagnostic-display-install-status.json').exists()else None)
-        alert('Pocket build needs attention',str(error)+'\n\nCheck the saved installation statuses. The card is not confirmed ready.')
+        print('Failure saved for the hourly repair follow-up: '+str(error),flush=True)
         raise

@@ -218,8 +218,9 @@ module unsp_cpu (
         mac_rs_address<=r[rs];
     end
 
-    wire [15:0] fetch_operand=(bus_rdata[15:12]==15 || bus_rdata[8:3]==32 ||
-        (bus_rdata[8:3]>=36 && bus_rdata[8:3]<56)) ? r[bus_rdata[2:0]] : {10'b0,bus_rdata[5:0]};
+    // Keep the register lookup independent of the incoming operand-form decode.
+    // Immediate forms use the separately captured literal, without a serial mux.
+    wire [15:0] fetch_operand=r[bus_rdata[2:0]];
     always_ff @(posedge clk)
         if (state[$clog2(WAIT_BUS)] && (resume_state[$clog2(FETCHED)] || resume_state[$clog2(PREFETCH_DONE)])) begin
             fetched_b<=fetch_operand;
@@ -349,7 +350,9 @@ module unsp_cpu (
             if (state[$clog2(WAIT_BUS)] && (resume_state[$clog2(FETCHED)] || resume_state[$clog2(PREFETCH_DONE)])) begin
                 branch_displacement<=bus_rdata[5:0];branch_backwards<=bus_rdata[6];
                 a<=r[bus_rdata[11:9]];
-                b_from_fetch<=1;
+                capture_b({10'b0,bus_rdata[5:0]},bus_rdata[15:12]>=2,
+                    bus_rdata[15:12]==1 || bus_rdata[15:12]==3);
+                b_from_fetch<=bus_rdata[8:6]!=3'b001;
             end
             unique case (1'b1)
                 state[$clog2(RESET_VECTOR)]: read_word(22'h00fff7, RESET_DONE);
@@ -589,9 +592,15 @@ module unsp_cpu (
             endcase
             if (!bus_valid) begin
                 // Interrupt/call pushes select SP without the operand-address mux.
-                bus_addr<=stack_bus_select ? {6'b0,r[0]} : operand_bus_select ? address : next_bus_address;
+                bus_addr<=stack_bus_select ? {6'b0,r[0]} :
+                    state[$clog2(PUSH)] ? {6'b0,r[rs]} :
+                    state[$clog2(POP)] ? {6'b0,stack_increment} :
+                    operand_bus_select ? address : next_bus_address;
                 // Select preclassified sources alongside their addresses.
-                bus_external<=stack_bus_select ? |r[0][15:14] : operand_bus_select ? |address[21:14] : next_bus_external;
+                bus_external<=stack_bus_select ? |r[0][15:14] :
+                    state[$clog2(PUSH)] ? |r[rs][15:14] :
+                    state[$clog2(POP)] ? |stack_increment[15:14] :
+                    operand_bus_select ? |address[21:14] : next_bus_external;
             end
             if (ds_write) r[6][15:10] <= ds_value;
         end
