@@ -3,6 +3,7 @@ set -euo pipefail
 cd "$(dirname "$0")/../.."
 mkdir -p build/rtl/cpu
 python3 tools/fpga/evidence.py begin components
+python3 -m unittest discover -s tests -p native_validation.py
 verilator --cc --exe --build -j 8 -MAKEFLAGS 'OPT_FAST=-O3' --top-module pdc_rom_check -GBANK_WORDS_BITS=8 "-GVECTOR_LINE=22'h000030" -GSINGLE_CRC=1553444405 -GPINK_CRC=891097517 -GPDC100_CRC=2605946556 \
   --Mdir build/rtl/rom-check -CFLAGS '-std=c++20 -O2' \
   rtl/pocket/pdc_rom_check.sv "$PWD/tests/rtl/rom_check.cpp" > build/rtl/rom-check-build.log 2>&1
@@ -54,6 +55,12 @@ verilator --cc --exe --build -j 8 -MAKEFLAGS 'OPT_FAST=-O3' --top-module pdc_spu
   "$PWD"/third_party/veesem/core/spg200/*.cpp \
   > build/rtl/spu-build.log 2>&1
 build/rtl/spu/Vpdc_spu
+verilator --cc --exe --build -j 8 -MAKEFLAGS 'OPT_FAST=-O3' --top-module pdc_spu -GADDRESS_LOOKAHEAD=1 +define+PDC_VERIFY_MMIO_CYCLES \
+  -Wno-BLKSEQ -Wno-UNUSEDSIGNAL --Mdir build/rtl/spu-lookahead \
+  -CFLAGS "-std=c++20 -O2 -fno-strict-aliasing -I$PWD/third_party/veesem -I$PWD/src" \
+  rtl/pdc_spu.sv "$PWD/tests/rtl/spu_differential.cpp" "$PWD/src/pdc.cpp" \
+  "$PWD"/third_party/veesem/core/spg200/*.cpp >build/rtl/spu-lookahead-build.log 2>&1
+build/rtl/spu-lookahead/Vpdc_spu
 verilator --binary --timing --top-module spu_counter_tb -Wno-PINMISSING -Wno-BLKSEQ -Wno-UNUSEDSIGNAL \
   --Mdir build/rtl/spu-counter rtl/pdc_spu.sv tests/rtl/spu_counter_tb.sv > build/rtl/spu-counter-build.log 2>&1
 build/rtl/spu-counter/Vspu_counter_tb

@@ -385,6 +385,7 @@ always_ff @(posedge clk_system or posedge reset_system)
     else core_reset<=!host_reset_sync[1] || (keys_sync_2[14] && keys_sync_2[15]);
 pdc_system #(.CLOCK_KHZ(98304),.REALTIME(1'b1)) machine (
     .clk(clk_system),.reset(core_reset),.rom_ready(rom_ready && check_passed),.final_bank,.videojet_controls,
+    .graphics_hash(load_crc==32'hcea549ad && final_bank==3'd0),
     .buttons({keys_sync_2[9:8],keys_sync_2[15],keys_sync_2[5:0]}),
     .rom_request(machine_rom_request),.rom_address(machine_rom_address),.rom_ack(rom_ack && check_done),.rom_data,.rom_line_valid,.rom_line_data,.pixel_valid,.pixel_ready,.pixel_x,.pixel_y,.pixel_data,
     .audio_valid,.audio_left,.audio_right,.frame_done,.ready(native_ready),.cycle_backlog,.cycle_overflow,

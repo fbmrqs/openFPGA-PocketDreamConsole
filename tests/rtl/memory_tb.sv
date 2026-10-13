@@ -10,6 +10,7 @@ module memory_tb #(parameter logic BURST_LINES=0,parameter logic REQUEST_STAGED=
     logic active = 0, release_request = 0;
     logic [24:0] held_address;
     logic staged_request;
+    logic hash_enable=HASH_INDEX;
     always_ff @(posedge clk) staged_request<=!reset && request;
     pdc_rom_cache #(.BURST_LINES(BURST_LINES),.REQUEST_STAGED(REQUEST_STAGED),.FAST_LINE(FAST_LINE),.HASH_INDEX(HASH_INDEX)) cache(
         .request(REQUEST_STAGED ? staged_request : request), .*);
@@ -68,6 +69,14 @@ module memory_tb #(parameter logic BURST_LINES=0,parameter logic REQUEST_STAGED=
             read(25'h12345);read(25'h22345);read(25'h12345);read(25'h22345);
             if(reads!=last_reads+2) $fatal(1,"Aliased texture pages must retain their independent cache lines");
             $display("Hashed ROM cache: aliased pages retained without extra storage");
+            reset=1;hash_enable=0;repeat(3)@(negedge clk);reset=0;
+            last_reads=reads;
+            read(25'h12345);read(25'h22345);read(25'h12345);
+            if(reads!=last_reads+3)$fatal(1,"Original indexing must be restored for a non-hashed profile");
+            reset=1;hash_enable=1;repeat(3)@(negedge clk);reset=0;
+            last_reads=reads;
+            read(25'h12345);read(25'h22345);read(25'h12345);
+            if(reads!=last_reads+2)$fatal(1,"Profile reset must restore hashed indexing without stale tags");
         end
         $display("ROM cache: hit/miss, bank tags, invalidation, delayed memory, held request passed");
         $finish;

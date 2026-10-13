@@ -354,20 +354,33 @@ module pdc_spu #(parameter logic ADDRESS_LOOKAHEAD = 0) (
     endfunction
     genvar read_voice;
     generate for (read_voice=0;read_voice<16;read_voice++) begin : read_capture
-        (* preserve, dont_merge, dont_retime *) logic [3:0] local_index;
-        (* preserve, dont_merge, dont_retime *) logic local_pitch;
-        always_ff @(posedge clk) begin
-            local_index<=register_read_lookahead[3:0];local_pitch<=register_read_lookahead[9];
-            channel_read[read_voice]<=read_channel(read_voice,
-                ADDRESS_LOOKAHEAD ? local_pitch : register_address[9],
-                ADDRESS_LOOKAHEAD ? local_index : register_address[3:0]);
-        end
+        if (ADDRESS_LOOKAHEAD) begin : prepared
+            (* preserve, dont_merge, dont_retime *) logic [11:0] wave_select;
+            (* preserve, dont_merge, dont_retime *) logic [7:0] pitch_select;
+            logic [15:0] selected_word;
+            always_comb begin
+                selected_word=0;
+                for(int word_index=0;word_index<12;word_index++)
+                    selected_word|=read_channel(read_voice,1'b0,4'(word_index)) & {16{wave_select[word_index]}};
+                for(int word_index=0;word_index<8;word_index++)
+                    selected_word|=read_channel(read_voice,1'b1,4'(word_index)) & {16{pitch_select[word_index]}};
+            end
+            always_ff @(posedge clk) begin
+                for(int word_index=0;word_index<12;word_index++)
+                    wave_select[word_index]<=!register_read_lookahead[9] && register_read_lookahead[3:0]==4'(word_index);
+                for(int word_index=0;word_index<8;word_index++)
+                    pitch_select[word_index]<=register_read_lookahead[9] && register_read_lookahead[3:0]==4'(word_index);
+                channel_read[read_voice]<=selected_word;
+            end
 `ifdef PDC_VERIFY_MMIO_CYCLES
-        always_ff @(posedge clk)
-            if (ADDRESS_LOOKAHEAD && !reset &&
-                (local_index!=register_address[3:0] || local_pitch!=register_address[9]))
-                $fatal(1,"Local sound read field differs from the registered bus address");
+            always_ff @(posedge clk) if (!reset &&
+                selected_word!=read_channel(read_voice,register_address[9],register_address[3:0]))
+                $fatal(1,"Prepared sound field differs from the current register read");
 `endif
+        end else begin : direct
+            always_ff @(posedge clk)
+                channel_read[read_voice]<=read_channel(read_voice,register_address[9],register_address[3:0]);
+        end
     end endgenerate
     (* preserve, dont_retime *) logic [4:0] global_read_index;
     always_ff @(posedge clk) begin

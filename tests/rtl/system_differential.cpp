@@ -29,6 +29,12 @@ int main(int argc,char** argv) {
     const size_t words=size_t(reference.BankCount())*0x400000;
     std::vector<uint16_t> rom(words);if (std::fread(rom.data(),2,words,file)!=words) return 2;std::fclose(file);
     Vpdc_system dut;dut.videojet_controls=videojet;dut.pixel_ready=1;dut.rom_line_valid=native_latency;AudioResampler resampler;
+    uint32_t startup_crc=0xffffffff;
+    for(size_t n=words-0x400000;n<words;n++)for(unsigned byte=0;byte<2;byte++) {
+        startup_crc^=uint8_t(rom[n]>>(byte*8));
+        for(unsigned bit=0;bit<8;bit++)startup_crc=(startup_crc>>1)^(startup_crc&1 ? 0xedb88320u : 0u);
+    }
+    dut.graphics_hash=reference.BankCount()==1 && (startup_crc^0xffffffff)==0xcea549ad;
     #ifdef PDC_POCKET_OUTPUTS
     PocketOutputs outputs;
     #endif

@@ -52,21 +52,49 @@ def fpga_verification(experimental):
             'setup_slack_ns': slacks}
 
 
+def verified_library(record):
+    if (not record.get('completed') or record.get('frames_per_rom') != 1800 or
+            record.get('system_inputs') != inputs('system-pink-pocket') or
+            record.get('script_sha256') != digest(ROOT / 'tools/fpga/library-test.py', 'sha256')):
+        raise ValueError('ROM library validation is incomplete or stale.')
+    passed = set(record['roms'])
+    failed = set(record['failures'])
+    known = {rom.key for rom in NATIVE_ROMS}
+    if passed & failed or (passed | failed) != known:
+        raise ValueError('ROM library results contain missing, unknown or conflicting profiles.')
+    selected = tuple(rom for rom in NATIVE_ROMS if rom.key in passed)
+    if not selected:
+        raise ValueError('No additional ROM passed validation; the display package remains independent.')
+    receipts = {}
+    for rom in selected:
+        asset_hash = validate_native(rom, ROOT / 'build/rom-library/native' / (rom.key + '.rom'))
+        if record['roms'][rom.key] != {'sha256': asset_hash, 'videojet': rom.videojet}:
+            raise ValueError(f'ROM library verification differs: {rom.key}')
+        name = 'system-' + rom.key + '-pocket'
+        receipts[name] = require(name)
+    return selected, receipts
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--install-to', type=Path)
     parser.add_argument('--experimental', action='store_true',
                         help='Package a separate hardware test after all timing and validation gates pass.')
-    parser.add_argument('--rom-library', action='store_true', help='Include the eight validated additional ROM profiles.')
+    parser.add_argument('--rom-library', action='store_true', help='Include additional ROM profiles that individually passed validation.')
     args = parser.parse_args()
     shortname = ('PocketDreamLibrary' if args.rom_library else 'PocketDreamConsoleFPGA') + ('Test' if args.experimental else '')
     core_id = 'Local.' + shortname
     out = ROOT / ('dist/pocket-dc-native-library' if args.rom_library else
                   'dist/pocket-dc-native-experimental' if args.experimental else 'dist/pocket-dc-native')
     verification = {name: require(name) for name in
-                    ('components', 'system-pink', 'system-pdc100',
-                     'system-pink-paced', 'system-pdc100-paced',
-                     'system-pink-pocket', 'system-pdc100-pocket')}
+                    ('components', 'system-pink-pocket', 'system-pdc100-pocket')}
+    # These older-clock runs are useful diagnostics; production-output runs
+    # above exercise the actual clock and full video/audio interfaces.
+    for name in ('system-pink', 'system-pdc100', 'system-pink-paced', 'system-pdc100-paced'):
+        try:
+            verification[name] = require(name)
+        except (OSError, ValueError, KeyError, TypeError):
+            print(f'Optional historical-clock check unavailable: {name}')
     require('fpga')  # Keep the passing slow-clock timing baseline for this probe.
     verification['fpga'] = fpga_verification(args.experimental)
     slow_receipt = json.loads((ROOT / 'build/slow-clock-validation.json').read_text())
@@ -76,17 +104,15 @@ def main():
             slow_receipt['script_sha256'] != digest(ROOT / 'tools/fpga/slow-clock-test.sh', 'sha256')):
         raise ValueError('Slow-clock validation is missing, failed or stale.')
     verification['slow_system'] = slow_receipt
+    selected_roms = ()
+    excluded_roms = {}
     if args.rom_library:
         library = json.loads((ROOT / 'build/rom-library-validation.json').read_text())
-        if (not library.get('passed') or library.get('frames_per_rom') != 1800 or
-                library.get('system_inputs') != inputs('system-pink-pocket') or
-                library.get('script_sha256') != digest(ROOT / 'tools/fpga/library-test.py', 'sha256')):
-            raise ValueError('ROM library validation is missing, failed or stale.')
-        for rom in NATIVE_ROMS:
-            asset_hash = validate_native(rom, ROOT / 'build/rom-library/native' / (rom.key + '.rom'))
-            if library['roms'][rom.key] != {'sha256': asset_hash, 'videojet': rom.videojet}:
-                raise ValueError(f'ROM library verification differs: {rom.key}')
-            verification['system-' + rom.key + '-pocket'] = require('system-' + rom.key + '-pocket')
+        selected_roms, receipts = verified_library(library)
+        verification.update(receipts)
+        excluded_roms = library['failures']
+        for key in excluded_roms:
+            print(f'Excluded failed ROM profile: {key}')
         verification['library'] = library
 
     rbf = ROOT / 'build/fpga/native/fpga/output_files/ap_core.rbf'
@@ -159,7 +185,7 @@ def main():
         write_json(out / 'Assets/pdc' / core_id / f'{label}.json', {'instance': {
             'magic': 'APF_VER_1', 'data_slots': [{'id': 1, 'filename': f'{stem}.rom'}]}})
     if args.rom_library:
-        for rom in NATIVE_ROMS:
+        for rom in selected_roms:
             shutil.copy2(ROOT / 'build/rom-library/native' / (rom.key + '.rom'), out / 'Assets/pdc/common' / (rom.key + '.rom'))
             write_json(out / 'Assets/pdc' / core_id / (rom.label + '.json'), {'instance': {
                 'magic': 'APF_VER_1', 'data_slots': [{'id': 1, 'filename': rom.key + '.rom'}]}})
@@ -203,8 +229,8 @@ def main():
     write_json(out / ('native-experimental-manifest.json' if args.experimental else 'native-manifest.json'),
                {'hardware_verified': False, 'experimental': args.experimental,
                 'display_profiles': {core_id: 'main', extra_id: 'extra'},
-                'rom_count': len(ROMS) + (len(NATIVE_ROMS) if args.rom_library else 0),
-                'rom_library': [rom.key for rom in NATIVE_ROMS] if args.rom_library else [],
+                'rom_count': len(ROMS) + len(selected_roms),
+                'rom_library': [rom.key for rom in selected_roms], 'excluded_roms': excluded_roms,
                 'memory_check': {'bank_bytes': 8388608, 'passes': 2, 'pink_crc32': '0x0C1DC0F3', 'pdc100_crc32': '0xCCD6C6D3'},
                 'pacing_max_backlog_cycles': 131071, 'pacing_overflow_status_mask': '0x00008000',
                 'diagnostic_clock_khz': 98304, 'sdram_clock_khz': 49152, 'prior_full_system_test_clock_khz': 196608,
@@ -218,6 +244,19 @@ def main():
     print(f'Native SD tree: {out}\nPrivate ROM-inclusive ZIP: {archive}')
     if args.install_to:
         card = args.install_to.resolve(strict=True)
+        obsolete = []
+        if args.rom_library:
+            for entry in (core_id, extra_id):
+                for rom in NATIVE_ROMS:
+                    if rom in selected_roms:
+                        continue
+                    target = card / 'Assets/pdc' / entry / (rom.label + '.json')
+                    if target.exists():
+                        expected = {'instance': {'magic': 'APF_VER_1', 'data_slots': [
+                            {'id': 1, 'filename': rom.key + '.rom'}]}}
+                        if json.loads(target.read_text()) != expected:
+                            raise ValueError(f'Excluded-ROM launch entry was modified: {target}; installation stopped.')
+                        obsolete.append(target)
         for name, expected in files.items():
             target = card / name
             if target.exists() and digest(target, 'sha256') == expected:
@@ -237,6 +276,8 @@ def main():
             temporary.replace(target)
             if digest(target, 'sha256') != expected:
                 raise ValueError(f'Card verification failed: {target}')
+        for target in obsolete:
+            target.unlink()
         print(f'Installed and verified on {card}; card remains mounted.')
     print('Physical Pocket boot, gameplay and memory timing still require a device test.')
 

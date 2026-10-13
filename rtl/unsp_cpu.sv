@@ -108,6 +108,9 @@ module unsp_cpu (
     logic next_bus_external;
     (* keep *) wire stack_bus_select=state[$clog2(ENTRY_PC)] || state[$clog2(ENTRY_SR)] ||
         state[$clog2(CALL_PC)] || state[$clog2(CALL_SR)];
+    wire operand_bus_select=(state[$clog2(DECODE)] && operand_form[0] && rd!=7) ||
+        (state[$clog2(INDIRECT)] && mode[1:0]==0) || state[$clog2(INDIRECT_ACCESS)] ||
+        (state[$clog2(ALU)] && mode==35);
     logic [6:0] branch_low;
     (* preserve *) logic [15:0] pointer;
     logic pointer_wrap;
@@ -586,9 +589,9 @@ module unsp_cpu (
             endcase
             if (!bus_valid) begin
                 // Interrupt/call pushes select SP without the operand-address mux.
-                bus_addr<=stack_bus_select ? {6'b0,r[0]} : next_bus_address;
+                bus_addr<=stack_bus_select ? {6'b0,r[0]} : operand_bus_select ? address : next_bus_address;
                 // Select preclassified sources alongside their addresses.
-                bus_external<=stack_bus_select ? |r[0][15:14] : next_bus_external;
+                bus_external<=stack_bus_select ? |r[0][15:14] : operand_bus_select ? |address[21:14] : next_bus_external;
             end
             if (ds_write) r[6][15:10] <= ds_value;
         end

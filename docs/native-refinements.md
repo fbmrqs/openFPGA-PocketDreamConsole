@@ -5,24 +5,40 @@ The recovery baseline is commit `8338dc7`, tag
 on Pocket in both PDC30 Pink and PDC100. New source changes require fresh
 simulation, four-corner timing, package verification and a Pocket test.
 
-The previous frozen follow-up attempts, `build/native-combined-workspace` and
-`build/native-mix-workspace`, stopped at their Oui-Oui smoke gates before FPGA
-compilation. Neither completed a display installation: their install statuses
-are blocked and `display_install` is null.
-The working card core remains unchanged. The next candidate is
-`build/native-prefetch-workspace`. Its runner
-performs all validation gates, packages both display entries, verifies and
-flushes installation only on the previously identified Pocket card, and shows
-a window alert for completion, failure or a required card connection. It never
-ejects the card. `diagnostic-build-status.json` and
-`diagnostic-install-status.json` record the live outcome. A running or packaged
-candidate is not a hardware-confirmed result.
+The latest failed attempt, `build/native-prefetch-workspace`, stopped after Pink
+exceeded its playback budget at frame 1,227. Oui-Oui still exceeded its budget
+at frame 975. The fitted design independently failed slow-corner setup timing
+at −0.747 ns and −0.596 ns. No display or library installation completed. Its
+logs and fitted netlist are preserved; the working card core remains unchanged.
 
-This candidate compiles one bitstream for both the display and ROM-library
-packages. The display package can install after its original-ROM validation
-passes; the library additionally requires all eight per-ROM checks. Each
-installation has its own status file and completion alert. A failed library
-check does not invalidate an already verified display installation.
+The next candidate is `build/native-qualified-workspace`, driven by the tracked
+`tools/fpga/run-diagnostic.py`. Independent tests keep running after a failure,
+with all outcomes saved. The expensive FPGA compile starts only after both
+original ROMs complete their production-clock Pocket-output comparisons,
+component correctness checks and clock smoke test. The card is never ejected.
+
+Each installed ROM must have current readback, asset identity and full system
+comparison evidence. The library package includes only individually verified
+extra profiles and records excluded failures in its manifest. A failed extra
+ROM does not cancel a validated display package or other verified extra ROMs.
+Known obsolete launch entries for excluded ROMs are removed on update; raw
+dumps and custom entries are preserved. Installation remains verified and
+flushed, and each completed package has its own status file and window alert.
+
+## Validation policy
+
+CPU/banking/pixel/stereo correctness, startup readback, source/asset integrity,
+production-clock playback in the two original ROMs, complete FPGA timing and
+card write verification remain installation requirements. Hardware testing is
+still required before claiming that a new package works on Pocket.
+
+Synthetic CPU/SPU/PPU/IO speed targets are advisory measurements; a missed
+benchmark target alone does not fail component verification. Completion
+timeouts and data/interrupt mismatches still fail. Historical 196.608 MHz
+system runs are optional diagnostics: the required 98.304 MHz runs cover the
+actual timing configuration and production display/audio interfaces. The
+library checker collects all eight outcomes, then packaging selects the
+verified subset. Stale, incomplete, conflicting or corrupt results are rejected.
 
 ## Build timing follow-up
 
@@ -68,7 +84,8 @@ A trace of 195,629 graphics-cache requests produced 70,535 misses with the
 original direct index. Folding upper address bits into the index with a
 four-bit rotation produced 41,798 misses in the same trace. The cache retains
 its full tags and existing capacity. Only the dedicated graphics cache enables
-this mapping; CPU and shared caches keep their original indexing.
+this mapping; CPU and shared caches keep their original indexing. The initial
+candidate enabled it for every ROM, which later proved unsuitable for Pink.
 
 Dora then passed 180 frames with CPU, banking, pixels and stereo audio matching,
 with maximum cycle backlog 39,374 instead of overflow at 131,071. Simulated
@@ -97,7 +114,9 @@ at 135 clocks before the change; it now takes 119 clocks. The complete focused
 sound differential still matches 251,851 stereo samples and 288,000
 register/IRQ snapshots. This adds a multiply/accumulate timing path, so both
 the original Oui-Oui replay and a fresh four-corner physical fit are required.
-No performance or timing gate is relaxed.
+The arithmetic and physical timing requirements are preserved. Synthetic
+benchmark targets became advisory under the later validation policy above;
+actual original-ROM playback requirements remain strict.
 
 The mixed-sound candidate still overflowed, now at frame 975. This improved the
 failure point but did not resolve the sustained overload. Nothing was compiled
@@ -121,12 +140,36 @@ Full system replays and new physical timing remain mandatory.
 The display package's compile/install gates now depend on its two original ROMs,
 component checks, clock smoke test and four-corner timing. Extra-ROM failures
 are recorded independently, so they cannot cancel a valid display update. The
-library retains all eight complete readback/system checks; failed or stale
-library evidence still blocks its packaging and installation.
+library checker runs all eight complete readback/system checks; packaging now
+includes only the verified subset and excludes failures. Stale or incomplete
+results still block packaging.
 
 The four VideoJet sets each passed an initial 20-frame Pocket-output comparison.
 These short checks do not replace their required 1,800-frame validation or
 hardware testing.
+
+## Pink cache regression and remaining timing paths
+
+A captured Pink workload around frames 1,180–1,299 produced 186 graphics-cache
+misses per frame with original indexing, versus 738 with the four-bit fold.
+That increases graphics memory waits and is consistent with the later playback
+overflow. The fold is now selected only for Dora's approved startup-bank CRC
+`0xCEA549AD` and single-bank size. All other profiles retain original indexing.
+The cache samples its mode during reset and clears tags before resuming. Tests
+switch both ways, including an unchanged requested address across reset, and
+check correct data, hits, collisions and fresh fills in simulation and actual
+Quartus memory primitives. Pink's full replay must confirm the regression is
+resolved; the trace result alone does not establish that.
+
+The latest fit's longest paths include opcode-dependent CPU address selection,
+sound register-index decoding and CPU response-to-operand selection. The next
+candidate selects prepared operand addresses independently of late opcode
+eligibility and predecodes sound field selection before its existing read stage.
+Neither adds instruction cycles or changes audio arithmetic. All 184,035 CPU
+cases pass, and both direct and lookahead sound reads match 251,851 stereo
+samples and 288,000 register/IRQ snapshots. The new sound path checks its
+selected word against the original field function on every verified clock.
+These functional results do not establish physical timing closure.
 
 ## Startup and reset picture
 
@@ -226,10 +269,10 @@ The eight new profiles require full real-bank readback tests and independent
 1,800-frame CPU, banking, video and stereo comparisons using the production
 clock and Pocket output buffers. The package checks the ROM hashes, validation
 fingerprints and timing evidence again before writing any launch entries.
-It uses a separate `PocketDreamLibraryTest` entry. The failed library workspace
-`build/native-rom-library-workspace` is preserved, as is the failed combined
-workspace. A passing physical fit can produce both packages, but no new fit or
-installation has completed.
+It uses a separate `PocketDreamLibraryTest` entry. Failed workspaces are
+preserved. A passing physical fit can produce both packages, but no new
+installation has completed; the prefetch attempt completed fitting and failed
+timing validation.
 
 PDC40 Touch still needs address-bit descrambling and tactile GPIO/ADC controls.
 PDC150 Touch and PDC200 need data-bit descrambling and 128 MiB ROM access;

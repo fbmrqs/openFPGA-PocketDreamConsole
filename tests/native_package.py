@@ -43,6 +43,7 @@ class NativeSetup(unittest.TestCase):
             for instance in instances.glob('*.json'):
                 slots = json.loads(instance.read_text())['instance']['data_slots']
                 self.assertTrue(all((PACKAGE / 'Assets/pdc/common' / slot['filename']).is_file() for slot in slots))
+                self.assertTrue(all(Path(slot['filename']).stem not in MANIFEST.get('excluded_roms', {}) for slot in slots))
         self.assertTrue(all(bitstream == bitstreams[0] for bitstream in bitstreams))
         self.assertEqual(modes, {0x10, 0x20, 0x21, 0x22, 0x23, 0x30, 0x31, 0x32,
             0x40, 0x41, 0x42, 0x51, 0x52, 0x61, 0x62, 0x63, 0x71, 0x72, 0x81,

@@ -4,7 +4,7 @@ module pdc_system #(
 ) (
     input logic clk, reset, rom_ready,
     input logic [2:0] final_bank,
-    input logic videojet_controls,
+    input logic videojet_controls, graphics_hash,
     input logic [8:0] buttons,
     output logic rom_request,
     output logic [24:0] rom_address,
@@ -53,7 +53,8 @@ module pdc_system #(
     logic cache_request, cache_ack, bank_changed;
     logic [15:0] cache_data;
     logic [24:0] cache_address;
-    logic cpu_rom_selected, cpu_response_rom, cpu_rom_ack, cpu_rom_request;
+    logic cpu_rom_selected, cpu_rom_ack, cpu_rom_request;
+    (* preserve, dont_merge, maxfan=8 *) logic cpu_response_rom;
     logic [15:0] cpu_rom_data, external_rom_data;
     logic [24:0] cpu_cache_address, cpu_external_address, shared_external_address;
     logic shared_rom_request;
@@ -206,19 +207,19 @@ module pdc_system #(
     pdc_ram ram(.clk, .reset(system_reset), .ready(ram_ready), .request(ram_request), .write(memory_write),
         .address(memory_address[13:0]), .read_address(memory_lookahead_address[13:0]), .write_data(memory_write_data), .ack(ram_ack), .read_data(ram_data));
     pdc_rom_cache #(.INDEX_BITS(9),.BURST_LINES(1'b1)) cache(
-        .clk, .reset(system_reset), .invalidate(1'b0), .request(cache_request), .address(cache_address),
+        .clk, .reset(system_reset), .invalidate(1'b0), .hash_enable(1'b0), .request(cache_request), .address(cache_address),
         .ack(cache_ack), .data(cache_data), .line_data(), .memory_request(shared_rom_request), .memory_address(shared_external_address),
         .memory_ack(external_acks[0]), .memory_data(external_rom_data),
         .memory_line_valid(rom_line_valid), .memory_line_data(rom_line_data));
     // CPU and graphics ROM hits bypass RAM/MMIO arbitration. Each cache tags
     // the ROM bank; sound and DMA retain a smaller shared cache.
     pdc_rom_cache #(.INDEX_BITS(10),.BURST_LINES(1'b1),.FAST_LINE(1'b1)) cpu_cache(
-        .clk, .reset(system_reset), .invalidate(1'b0), .request(cpu_rom_selected), .address(cpu_cache_address),
+        .clk, .reset(system_reset), .invalidate(1'b0), .hash_enable(1'b0), .request(cpu_rom_selected), .address(cpu_cache_address),
         .ack(cpu_rom_ack), .data(cpu_rom_data), .line_data(), .memory_request(cpu_rom_request), .memory_address(cpu_external_address),
         .memory_ack(external_acks[2]), .memory_data(external_rom_data),
         .memory_line_valid(rom_line_valid), .memory_line_data(rom_line_data));
     pdc_rom_cache #(.BURST_LINES(1'b1),.REQUEST_STAGED(1'b1),.HASH_INDEX(1'b1)) ppu_cache(
-        .clk, .reset(system_reset), .invalidate(1'b0), .request(ppu_cache_request), .address(ppu_cache_address),
+        .clk, .reset(system_reset), .invalidate(1'b0), .hash_enable(graphics_hash), .request(ppu_cache_request), .address(ppu_cache_address),
         .ack(ppu_rom_ack), .data(ppu_rom_data), .line_data(ppu_rom_line), .memory_request(ppu_rom_request), .memory_address(ppu_external_address),
         .memory_ack(external_acks[1]), .memory_data(external_rom_data),
         .memory_line_valid(rom_line_valid), .memory_line_data(rom_line_data));

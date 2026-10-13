@@ -12,7 +12,7 @@ from rom_library import NATIVE_ROMS, validate_native
 from evidence import inputs
 
 record_path = ROOT / 'build/rom-library-validation.json'
-record = {'passed': False, 'frames_per_rom': 1800,
+record = {'passed': False, 'completed': False, 'frames_per_rom': 1800,
           'system_inputs': inputs('system-pink-pocket'),
           'script_sha256': hashlib.sha256(Path(__file__).read_bytes()).hexdigest(), 'roms': {}, 'failures': {}}
 record_path.write_text(json.dumps(record, indent=2) + '\n')
@@ -50,7 +50,8 @@ with ThreadPoolExecutor(max_workers=2) as pool:
         record_path.write_text(json.dumps(record, indent=2) + '\n')
 if record['system_inputs'] != inputs('system-pink-pocket'):
     raise ValueError('Sources changed during library validation.')
+record['completed'] = True
+record['passed'] = not record['failures']
+record_path.write_text(json.dumps(record, indent=2) + '\n')
 if record['failures']:
     raise SystemExit('ROM validation failed: ' + ', '.join(record['failures']))
-record['passed'] = True
-record_path.write_text(json.dumps(record, indent=2) + '\n')

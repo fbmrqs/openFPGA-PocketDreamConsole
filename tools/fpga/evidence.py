@@ -24,6 +24,9 @@ def inputs(component):
         paths.update((ROOT / 'third_party/pocket').glob('*'))
         if component == 'components':
             paths.update((ROOT / 'tests/rtl').glob('*'))
+            paths.add(ROOT / 'tests/native_validation.py')
+            paths.update(ROOT / name for name in ('tools/fpga/run-diagnostic.py',
+                         'tools/package_native.py', 'tools/rom_library.py', 'tools/fpga/library-test.py'))
             paths.add(ROOT / '.deps/core-template/src/fpga/apf/common.v')
             paths.add(ROOT / '.deps/quartus-sim/altera_mf.v')
             paths.add(ROOT / 'tools/fpga/cache-vendor-test.sh')
