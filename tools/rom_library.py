@@ -91,7 +91,10 @@ def main():
             record['native_sha256'] = validate_native(rom, native)
             record['startup_crc32'] = f'{rom.startup_crc:08x}'
         if args.install_dumps_to:
-            target = args.install_dumps_to / 'Assets/pdc/dumps' / rom.key / rom.member
+            folder = args.install_dumps_to / 'Assets/pdc/dumps'
+            if not rom.native_size:
+                folder /= 'Unsupported'
+            target = folder / rom.key / rom.member
             verified_write(target, data)
             record['card_dump'] = str(target)
         records[rom.key] = record

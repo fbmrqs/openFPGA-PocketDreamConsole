@@ -217,7 +217,7 @@ module pdc_system #(
         .ack(cpu_rom_ack), .data(cpu_rom_data), .line_data(), .memory_request(cpu_rom_request), .memory_address(cpu_external_address),
         .memory_ack(external_acks[2]), .memory_data(external_rom_data),
         .memory_line_valid(rom_line_valid), .memory_line_data(rom_line_data));
-    pdc_rom_cache #(.BURST_LINES(1'b1),.REQUEST_STAGED(1'b1)) ppu_cache(
+    pdc_rom_cache #(.BURST_LINES(1'b1),.REQUEST_STAGED(1'b1),.HASH_INDEX(1'b1)) ppu_cache(
         .clk, .reset(system_reset), .invalidate(1'b0), .request(ppu_cache_request), .address(ppu_cache_address),
         .ack(ppu_rom_ack), .data(ppu_rom_data), .line_data(ppu_rom_line), .memory_request(ppu_rom_request), .memory_address(ppu_external_address),
         .memory_ack(external_acks[1]), .memory_data(external_rom_data),

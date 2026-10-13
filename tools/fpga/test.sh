@@ -94,6 +94,10 @@ for mode in 0 1; do
     "build/rtl/memory-staged-$mode/Vmemory_tb"
 done
 bash tools/fpga/cache-vendor-test.sh
+verilator --binary --timing --top-module memory_tb -GBURST_LINES=1 -GREQUEST_STAGED=1 -GHASH_INDEX=1 \
+  +define+PDC_POISON_COLLISIONS +define+PDC_VERIFY_MMIO_CYCLES -Wno-BLKSEQ -Wno-UNUSEDSIGNAL \
+  --Mdir build/rtl/memory-hashed rtl/pdc_rom_cache.sv tests/rtl/memory_tb.sv >build/rtl/memory-hashed-build.log 2>&1
+build/rtl/memory-hashed/Vmemory_tb
 verilator --binary --timing --top-module system_bus_tb +define+PDC_POISON_COLLISIONS +define+PDC_VERIFY_MMIO_CYCLES \
   -Wno-PINMISSING -Wno-UNUSEDSIGNAL -Wno-BLKSEQ --Mdir build/rtl/system-bus \
   rtl/*.sv tests/rtl/system_bus_tb.sv > build/rtl/system-bus-build.log 2>&1

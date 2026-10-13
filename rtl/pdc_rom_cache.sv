@@ -1,4 +1,4 @@
-module pdc_rom_cache #(parameter integer INDEX_BITS = 12, parameter logic BURST_LINES = 0, parameter logic REQUEST_STAGED = 0, parameter logic FAST_LINE = 0) (
+module pdc_rom_cache #(parameter integer INDEX_BITS = 12, parameter logic BURST_LINES = 0, parameter logic REQUEST_STAGED = 0, parameter logic FAST_LINE = 0, parameter logic HASH_INDEX = 0) (
     input logic clk, reset, invalidate,
     input logic request,
     input logic [24:0] address,
@@ -53,9 +53,16 @@ module pdc_rom_cache #(parameter integer INDEX_BITS = 12, parameter logic BURST_
     logic front_valid;
     logic [20:0] front_address;
     wire front_hit=FAST_LINE && front_valid && front_address==address[24:4];
+    function automatic logic [INDEX_BITS-1:0] cache_index(input logic [24:0] key);
+        localparam integer ROTATE=INDEX_BITS>4 ? 4 : 1;
+        logic [INDEX_BITS-1:0] upper;
+        upper=INDEX_BITS'(key[24:INDEX_BITS+4]);
+        // Keep tags intact; folding spreads aliased texture pages across sets.
+        return key[INDEX_BITS+3:4] ^ (HASH_INDEX ? ((upper<<ROTATE)|(upper>>(INDEX_BITS-ROTATE))) : INDEX_BITS'(0));
+    endfunction
     assign data=hit_response ? hit_word : fill_data;
     // Requesters hold address until acknowledgment, including the read stages.
-    wire [INDEX_BITS-1:0] read_index = address[INDEX_BITS+3:4];
+    wire [INDEX_BITS-1:0] read_index = cache_index(address);
     // Sixteen word banks let a native SDRAM reply fill a whole cache line
     // atomically; the word interface remains available to simple responders.
     genvar bank;
@@ -63,7 +70,7 @@ module pdc_rom_cache #(parameter integer INDEX_BITS = 12, parameter logic BURST_
     for (bank=0;bank<16;bank=bank+1) begin : cache_bank
         wire bank_write = !reset && !invalidate && state[$clog2(FILL)] && memory_ack && memory_request &&
             (BURST_LINES || memory_line_valid || fill_offset==4'(bank));
-        pdc_cache_bank #(.INDEX_BITS(INDEX_BITS), .WRITE_AT_READ_ADDRESS(1'b1),.READ_STAGED(1'b0)) storage (.clk(clk), .write(bank_write), .write_address(pending[INDEX_BITS+3:4]),
+        pdc_cache_bank #(.INDEX_BITS(INDEX_BITS), .WRITE_AT_READ_ADDRESS(1'b1),.READ_STAGED(1'b0)) storage (.clk(clk), .write(bank_write), .write_address(cache_index(pending)),
             .write_data(BURST_LINES || memory_line_valid ? memory_line_data[bank*16 +:16] : memory_data),
             .read_address(read_index), .read_data(ram_q[bank]));
     end
@@ -79,7 +86,7 @@ module pdc_rom_cache #(parameter integer INDEX_BITS = 12, parameter logic BURST_
         end
         tag_write_pending<=!reset && !invalidate && (state[$clog2(CLEAR_TAGS)] ||
             (state[$clog2(FILL)] && memory_ack && memory_request && (BURST_LINES || memory_line_valid || fill_offset==15)));
-        tag_write_address<=state[$clog2(CLEAR_TAGS)] ? clear_index : pending[INDEX_BITS+3:4];
+        tag_write_address<=state[$clog2(CLEAR_TAGS)] ? clear_index : cache_index(pending);
         tag_write_data<=state[$clog2(CLEAR_TAGS)] ? '0 : {1'b1,pending[24:INDEX_BITS+4]};
         tag_stage<=tags[read_index];
         if (!reset && !invalidate && tag_write_pending) tags[tag_write_address]<=tag_write_data;

@@ -1,4 +1,4 @@
-module memory_tb #(parameter logic BURST_LINES=0,parameter logic REQUEST_STAGED=0,parameter logic FAST_LINE=0);
+module memory_tb #(parameter logic BURST_LINES=0,parameter logic REQUEST_STAGED=0,parameter logic FAST_LINE=0,parameter logic HASH_INDEX=0);
     logic clk = 0;
     always #5 clk = ~clk;
     logic reset = 1, invalidate = 0, request = 0, ack;
@@ -11,7 +11,7 @@ module memory_tb #(parameter logic BURST_LINES=0,parameter logic REQUEST_STAGED=
     logic [24:0] held_address;
     logic staged_request;
     always_ff @(posedge clk) staged_request<=!reset && request;
-    pdc_rom_cache #(.BURST_LINES(BURST_LINES),.REQUEST_STAGED(REQUEST_STAGED),.FAST_LINE(FAST_LINE)) cache(
+    pdc_rom_cache #(.BURST_LINES(BURST_LINES),.REQUEST_STAGED(REQUEST_STAGED),.FAST_LINE(FAST_LINE),.HASH_INDEX(HASH_INDEX)) cache(
         .request(REQUEST_STAGED ? staged_request : request), .*);
     function automatic logic [15:0] value(input logic [24:0] addr);
         return addr[15:0] ^ {7'b0,addr[24:16]} ^ 16'h5a5a;
@@ -62,6 +62,13 @@ module memory_tb #(parameter logic BURST_LINES=0,parameter logic REQUEST_STAGED=
         invalidate=1;@(negedge clk);invalidate=0;
         read(25'h1fff8);
         if (reads!=last_reads+1) $fatal(1,"Invalidating the final cache line must refill before its held request");
+        if (HASH_INDEX) begin
+            invalidate=1;@(negedge clk);invalidate=0;
+            last_reads=reads;
+            read(25'h12345);read(25'h22345);read(25'h12345);read(25'h22345);
+            if(reads!=last_reads+2) $fatal(1,"Aliased texture pages must retain their independent cache lines");
+            $display("Hashed ROM cache: aliased pages retained without extra storage");
+        end
         $display("ROM cache: hit/miss, bank tags, invalidation, delayed memory, held request passed");
         $finish;
     end

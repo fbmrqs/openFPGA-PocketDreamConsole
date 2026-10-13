@@ -56,7 +56,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--install-to', type=Path)
     parser.add_argument('--experimental', action='store_true',
-                        help='Package a separate hardware test even when timing fails.')
+                        help='Package a separate hardware test after all timing and validation gates pass.')
     parser.add_argument('--rom-library', action='store_true', help='Include the eight validated additional ROM profiles.')
     args = parser.parse_args()
     shortname = ('PocketDreamLibrary' if args.rom_library else 'PocketDreamConsoleFPGA') + ('Test' if args.experimental else '')
@@ -103,7 +103,7 @@ def main():
     definition['core']['metadata'].update(
         platform_ids=['pdc'], shortname=shortname, author='Local', url='',
         description='PDC ROM library: color LCD and CRT' if args.rom_library else 'PDC30 / PDC100: color LCD and CRT displays',
-        version='0.2.0-rom-library' if args.rom_library else '0.1.0-display-priority' if args.experimental else '0.1.0-native-preview', date_release='2026-10-12')
+        version='0.2.0-rom-library' if args.rom_library else '0.1.1-display-priority' if args.experimental else '0.1.0-native-preview', date_release='2026-10-13')
     definition['core']['framework']['dock']['supported'] = False
     write_json(core / 'core.json', definition)
     for name in ('audio.json', 'video.json', 'interact.json', 'variants.json'):

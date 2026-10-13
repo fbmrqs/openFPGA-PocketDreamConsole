@@ -106,6 +106,8 @@ module unsp_cpu (
     logic [19:0] shift_word;
     logic [21:0] next_pc, next_bus_address;
     logic next_bus_external;
+    (* keep *) wire stack_bus_select=state[$clog2(ENTRY_PC)] || state[$clog2(ENTRY_SR)] ||
+        state[$clog2(CALL_PC)] || state[$clog2(CALL_SR)];
     logic [6:0] branch_low;
     (* preserve *) logic [15:0] pointer;
     logic pointer_wrap;
@@ -243,6 +245,10 @@ module unsp_cpu (
         bus_wdata <= value;
         resume_state <= next_state;
         state <= WAIT_BUS;
+    endtask
+    task automatic write_return_stack(input logic [15:0] value, input state_t next_state);
+        bus_valid <= 1;bus_write <= 1;bus_wdata <= value;
+        resume_state <= next_state;state <= WAIT_BUS;
     endtask
     task automatic advance_pc;
         next_pc = {6'(r[6][5:0]+6'(&r[7])),increment16(r[7])};
@@ -538,8 +544,8 @@ module unsp_cpu (
                         read_word({6'b0,pointer},POP_DONE);
                     end
                 state[$clog2(POP_DONE)]: begin r[stack_reg[2:0]] <= data_word; remaining = remaining - 5'd1; state <= POP; end
-                state[$clog2(ENTRY_PC)]: begin write_word({6'b0,r[0]},r[7],ENTRY_SR); r[0] <= r[0] - 16'd1; end
-                state[$clog2(ENTRY_SR)]: begin write_word({6'b0,r[0]},r[6],ENTRY_VECTOR); r[0] <= r[0] - 16'd1; end
+                state[$clog2(ENTRY_PC)]: begin write_return_stack(r[7],ENTRY_SR); r[0] <= r[0] - 16'd1; end
+                state[$clog2(ENTRY_SR)]: begin write_return_stack(r[6],ENTRY_VECTOR); r[0] <= r[0] - 16'd1; end
                 state[$clog2(ENTRY_VECTOR)]: read_word(address,ENTRY_DONE);
                 state[$clog2(ENTRY_DONE)]: begin r[7] <= data_word; r[6] <= 0; finish(10); end
                 state[$clog2(TARGET)]: begin
@@ -547,8 +553,8 @@ module unsp_cpu (
                     if (iw[8:6] == 1) state <= CALL_PC;
                     else begin r[7] <= target_pc[15:0]; r[6][5:0] <= target_pc[21:16]; finish(5); end
                 end
-                state[$clog2(CALL_PC)]: begin write_word({6'b0,r[0]},r[7],CALL_SR); r[0] <= r[0] - 16'd1; end
-                state[$clog2(CALL_SR)]: begin write_word({6'b0,r[0]},r[6],CALL_DONE); r[0] <= r[0] - 16'd1; end
+                state[$clog2(CALL_PC)]: begin write_return_stack(r[7],CALL_SR); r[0] <= r[0] - 16'd1; end
+                state[$clog2(CALL_SR)]: begin write_return_stack(r[6],CALL_DONE); r[0] <= r[0] - 16'd1; end
                 state[$clog2(CALL_DONE)]: begin r[7] <= target_pc[15:0]; r[6][5:0] <= target_pc[21:16]; finish(9); end
                 state[$clog2(MAC_A)]: read_word({6'b0,mac_rd_address},MAC_B);
                 state[$clog2(MAC_B)]: begin a<= data_word; read_word({6'b0,mac_rs_address},MAC_ACC); end
@@ -575,9 +581,10 @@ module unsp_cpu (
                 default: illegal();
             endcase
             if (!bus_valid) begin
-                bus_addr<=next_bus_address;
+                // Interrupt/call pushes select SP without the operand-address mux.
+                bus_addr<=stack_bus_select ? {6'b0,r[0]} : next_bus_address;
                 // Select preclassified sources alongside their addresses.
-                bus_external<=next_bus_external;
+                bus_external<=stack_bus_select ? |r[0][15:14] : next_bus_external;
             end
             if (ds_write) r[6][15:10] <= ds_value;
         end

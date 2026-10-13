@@ -1,6 +1,6 @@
 """Verify each imported ROM with the production-clock Pocket output fixture."""
 from pathlib import Path
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import hashlib
 import json
 import subprocess
@@ -14,7 +14,7 @@ from evidence import inputs
 record_path = ROOT / 'build/rom-library-validation.json'
 record = {'passed': False, 'frames_per_rom': 1800,
           'system_inputs': inputs('system-pink-pocket'),
-          'script_sha256': hashlib.sha256(Path(__file__).read_bytes()).hexdigest(), 'roms': {}}
+          'script_sha256': hashlib.sha256(Path(__file__).read_bytes()).hexdigest(), 'roms': {}, 'failures': {}}
 record_path.write_text(json.dumps(record, indent=2) + '\n')
 
 
@@ -37,10 +37,20 @@ def check(rom):
 
 
 with ThreadPoolExecutor(max_workers=2) as pool:
-    for key, result in pool.map(check, NATIVE_ROMS):
-        record['roms'][key] = result
+    jobs = {pool.submit(check, rom): rom for rom in NATIVE_ROMS}
+    for job in as_completed(jobs):
+        rom = jobs[job]
+        try:
+            key, result = job.result()
+            record['roms'][key] = result
+        except (subprocess.CalledProcessError, OSError, ValueError) as error:
+            log = ROOT / 'build/rom-library' / (rom.key + '.log')
+            record['failures'][rom.key] = {'error': str(error), 'log': str(log)}
+            print(f'{rom.label}: validation failed; see {log}', flush=True)
         record_path.write_text(json.dumps(record, indent=2) + '\n')
 if record['system_inputs'] != inputs('system-pink-pocket'):
     raise ValueError('Sources changed during library validation.')
+if record['failures']:
+    raise SystemExit('ROM validation failed: ' + ', '.join(record['failures']))
 record['passed'] = True
 record_path.write_text(json.dumps(record, indent=2) + '\n')

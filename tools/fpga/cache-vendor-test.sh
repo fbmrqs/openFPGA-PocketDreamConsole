@@ -28,6 +28,12 @@ for mode in 0 1; do
     done
 done
 
+iverilog -g2012 -DALTERA_RESERVED_QIS -DPDC_VERIFY_MMIO_CYCLES -I tests/rtl -s memory_tb \
+    -Pmemory_tb.BURST_LINES=1 -Pmemory_tb.REQUEST_STAGED=1 -Pmemory_tb.HASH_INDEX=1 \
+    -o build/rtl/cache-vendor/hashed.vvp rtl/pdc_rom_cache.sv build/rtl/cache-vendor/memory_tb.v "$library" \
+    >build/rtl/cache-vendor/hashed-build.log 2>&1
+vvp build/rtl/cache-vendor/hashed.vvp
+
 for mode in 0 1; do
     iverilog -g2012 -DALTERA_RESERVED_QIS -DPDC_VERIFY_MMIO_CYCLES -I tests/rtl -s memory_tb \
         -Pmemory_tb.BURST_LINES="$mode" -Pmemory_tb.FAST_LINE=1 \

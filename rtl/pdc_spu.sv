@@ -159,6 +159,19 @@ module pdc_spu #(parameter logic ADDRESS_LOOKAHEAD = 0) (
     logic [6:0] previous_adpcm_index;
     logic signed [17:0] adpcm_sum;
     wire signed [8:0] adjusted_adpcm_index = $signed({2'b0,previous_adpcm_index})+9'(STEP_ADJUST[adpcm_code[2:0]]);
+    (* preserve, dont_retime *) logic signed [8:0] adpcm_index_step;
+    (* preserve, dont_retime *) logic [6:0] next_adpcm_index;
+    (* preserve, dont_retime *) logic ramp_active;
+`ifdef PDC_VERIFY_MMIO_CYCLES
+    always_ff @(posedge clk) begin
+        if (!reset && state[$clog2(ADPCM_ACCUMULATE)] &&
+            next_adpcm_index!=(adjusted_adpcm_index<0 ? 7'd0 : adjusted_adpcm_index>88 ? 7'd88 : adjusted_adpcm_index[6:0]))
+            $fatal(1,"Prepared ADPCM index differs from decoded sample");
+        if (!reset && state[$clog2(RAMP_STEP)] &&
+            ramp_active!=(channel_enabled[ramp_voice] && g[10][ramp_voice] && ramp_due[ramp_voice]))
+            $fatal(1,"Prepared ramp eligibility differs from selected voice");
+    end
+`endif
     logic [35:0] previous_product, current_product;
     logic [15:0] mix_previous, mix_current;
     logic [18:0] mix_phase;
@@ -417,6 +430,7 @@ module pdc_spu #(parameter logic ADDRESS_LOOKAHEAD = 0) (
             env_read_address <= 0; env_repeat <= 0; encoding_adpcm = 0; encoding_byte = 0; env_loaded = 0; left_mix = 0; right_mix = 0;
             adpcm_code<=0;adpcm_step<=0;error_low<=0;error_high<=0;error_magnitude<=0;
             previous_adpcm<=0;previous_adpcm_index<=0;adpcm_sum<=0;
+            adpcm_index_step<=0;next_adpcm_index<=0;ramp_active<=0;
         end else begin
             for (int voice=0;voice<16;voice++) pitch_changed[voice]<=phase[voice]!=target_phase[voice];
             if (state[$clog2(IDLE)]) begin
@@ -550,16 +564,20 @@ module pdc_spu #(parameter logic ADDRESS_LOOKAHEAD = 0) (
                 end
                 state[$clog2(PCM_COMMIT)]: begin c[channel[3:0]][11]<=decoded_pcm;state<=WAVE_ADVANCE;end
                 state[$clog2(ADPCM_ERROR)]: begin
+                    adpcm_index_step<=adjusted_adpcm_index;
                     error_low<=(adpcm_step>>3)+(adpcm_code[0] ? adpcm_step>>2 : 16'd0);
                     error_high<=(adpcm_code[1] ? adpcm_step>>1 : 16'd0)+(adpcm_code[2] ? adpcm_step : 16'd0);
                     state<=ADPCM_MAGNITUDE;
                 end
-                state[$clog2(ADPCM_MAGNITUDE)]: begin error_magnitude<=error_low+error_high;state<=ADPCM_ACCUMULATE;end
+                state[$clog2(ADPCM_MAGNITUDE)]: begin
+                    error_magnitude<=error_low+error_high;
+                    next_adpcm_index<=adpcm_index_step<0 ? 7'd0 : adpcm_index_step>88 ? 7'd88 : adpcm_index_step[6:0];
+                    state<=ADPCM_ACCUMULATE;
+                end
                 state[$clog2(ADPCM_ACCUMULATE)]: begin
                     adpcm_sum<=adpcm_code[3] ? 18'(previous_adpcm)-$signed({2'b0,error_magnitude}) :
                         18'(previous_adpcm)+$signed({2'b0,error_magnitude});
-                    adpcm_index[channel[3:0]]<=adjusted_adpcm_index<0 ? 7'd0 :
-                        adjusted_adpcm_index>88 ? 7'd88 : adjusted_adpcm_index[6:0];
+                    adpcm_index[channel[3:0]]<=next_adpcm_index;
                     state<=ADPCM_CLAMP;
                 end
                 state[$clog2(ADPCM_CLAMP)]: begin
@@ -706,12 +724,13 @@ module pdc_spu #(parameter logic ADDRESS_LOOKAHEAD = 0) (
                     else begin
                         index = int'(channel[3:0]);
                         ramp_voice<=channel[3:0];advance_channel();
-                        if (current_ramp_enabled) begin
-                            envelope_source<=c[index][5][6:0];envelope_step<=c[index][10][15:9];state<=RAMP_STEP;
-                        end
+                        ramp_active<=current_ramp_enabled;
+                        envelope_source<=c[index][5][6:0];envelope_step<=c[index][10][15:9];state<=RAMP_STEP;
                     end
                 state[$clog2(RAMP_STEP)]: begin
-                    envelope_candidate<=$signed({2'b0,envelope_source})-$signed({2'b0,envelope_step});state<=RAMP_COMMIT;
+                    if (ramp_active) begin
+                        envelope_candidate<=$signed({2'b0,envelope_source})-$signed({2'b0,envelope_step});state<=RAMP_COMMIT;
+                    end else state<=RAMP;
                 end
                 state[$clog2(RAMP_COMMIT)]: begin
                     envelope_amplitude=envelope_candidate[8] ? 7'd0 : envelope_candidate[6:0];

@@ -5,13 +5,22 @@ The recovery baseline is commit `8338dc7`, tag
 on Pocket in both PDC30 Pink and PDC100. New source changes require fresh
 simulation, four-corner timing, package verification and a Pocket test.
 
-The current frozen follow-up candidate is `build/native-display-timing-workspace`. Its runner
+The latest frozen follow-up attempt, `build/native-combined-workspace`, stopped
+at its Oui-Oui smoke gate before FPGA compilation. There is no completed display
+installation: its install status is blocked and `display_install` is null.
+The working card core remains unchanged. Its runner
 performs all validation gates, packages both display entries, verifies and
 flushes installation only on the previously identified Pocket card, and shows
 a window alert for completion, failure or a required card connection. It never
 ejects the card. `diagnostic-build-status.json` and
 `diagnostic-install-status.json` record the live outcome. A running or packaged
 candidate is not a hardware-confirmed result.
+
+This candidate compiles one bitstream for both the display and ROM-library
+packages. The display package can install after its original-ROM validation
+passes; the library additionally requires all eight per-ROM checks. Each
+installation has its own status file and completion alert. A failed library
+check does not invalidate an already verified display installation.
 
 ## Build timing follow-up
 
@@ -36,6 +45,39 @@ Only a fresh placement and four-corner timing check can establish that these
 changes resolve the physical timing failure. Passing functional simulation is
 not evidence of timing closure. The CPU address path also had negative margin
 in the failed placement and remains part of the required full timing check.
+
+The second display fit improved the worst margins to −0.238 ns and −0.097 ns,
+but still failed. Its remaining reported paths were ADPCM index adjustment,
+ramp eligibility and interrupt/call stack address selection. The combined
+candidate registers the ADPCM adjustment and clamp in existing decode stages,
+captures ramp eligibility before routing, and selects the return-stack address
+directly. Decode and CPU instruction cycle counts are unchanged; an inactive
+ramp voice takes one additional internal clock. Differential CPU/audio checks
+pass, but timing closure still requires the fresh physical fit.
+
+## Library frame-budget diagnosis
+
+The first library attempt passed PDC50 and TMNT through 1,800 frames. Oui-Oui
+overflowed the real-time budget at frame 966, and Dora at frame 97. A 100-frame
+Dora replay reproduced exactly the same failure. Per-frame measurements showed
+substantial ROM fetch waits and no pixel-output stalls near that failure.
+
+A trace of 195,629 graphics-cache requests produced 70,535 misses with the
+original direct index. Folding upper address bits into the index with a
+four-bit rotation produced 41,798 misses in the same trace. The cache retains
+its full tags and existing capacity. Only the dedicated graphics cache enables
+this mapping; CPU and shared caches keep their original indexing.
+
+Dora then passed 180 frames with CPU, banking, pixels and stereo audio matching,
+with maximum cycle backlog 39,374 instead of overflow at 131,071. Simulated
+cache tests and Quartus memory-primitive tests cover alias separation, delayed
+reads, atomic line fills and invalidation. Full-length game checks remain
+mandatory. The build waits for the Oui-Oui replay to pass frame 966 before
+starting Quartus. That replay still overflowed at frame 966 with the new cache
+mapping, so the combined attempt stopped before compilation. Targeted per-frame
+profiling is investigating this separate workload; the Dora result does not
+establish compatibility for Oui-Oui. The library checker records every game's outcome rather
+than abandoning later games after the first failure.
 
 ## Startup and reset picture
 
@@ -120,6 +162,8 @@ The user supplied all eleven archives locally. Their exact member sizes and
 SHA-1 identities were verified. Original dump copies are installed under
 `Assets/pdc/dumps/<set>/` on the card; those files are archival copies, not launch
 entries. The supplied archives are unchanged and ROM data remains Git-ignored.
+PDC200, PDC40 Touch and PDC150 Touch are grouped under
+`Assets/pdc/dumps/Unsupported/<set>/`, with hashes rechecked after the move.
 
 `tools/rom_library.py` imports these sets reproducibly. PDC50 and Oui-Oui retain
 their 16 MiB images. Dora and TMNT retain their 8 MiB images. VideoJet images
@@ -133,10 +177,10 @@ The eight new profiles require full real-bank readback tests and independent
 1,800-frame CPU, banking, video and stereo comparisons using the production
 clock and Pocket output buffers. The package checks the ROM hashes, validation
 fingerprints and timing evidence again before writing any launch entries.
-It uses a separate `PocketDreamLibraryTest` entry, preserving the original
-hardware-confirmed entry. The frozen library candidate is `build/native-rom-library-workspace`.
-The queued library fit waits for the existing display
-fit; it does not start a second Quartus job concurrently.
+It uses a separate `PocketDreamLibraryTest` entry. The failed library workspace
+`build/native-rom-library-workspace` is preserved, as is the failed combined
+workspace. A passing physical fit can produce both packages, but no new fit or
+installation has completed.
 
 PDC40 Touch still needs address-bit descrambling and tactile GPIO/ADC controls.
 PDC150 Touch and PDC200 need data-bit descrambling and 128 MiB ROM access;
