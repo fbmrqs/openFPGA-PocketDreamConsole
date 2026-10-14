@@ -231,7 +231,8 @@ module psram #(
     $info("  Total read time: %d cycles", TOTAL_READ_CYCLE_COUNT);
   end
 
-  reg [7:0] state = STATE_NONE;
+  localparam integer STATE_WIDTH = `MAX(STATE_WRITE_HOLD_END, STATE_READ_DATA_RECEIVED) + 1;
+  reg [STATE_WIDTH-1:0] state = STATE_WIDTH'(1);
 
   // If 1, route cram_data reg to cram_dq
   reg data_out_en = 0;
@@ -242,21 +243,23 @@ module psram #(
   assign cram_dq = data_out_en ? cram_data : 16'hZZ;
 
   always @(posedge clk) begin
-    if (state != STATE_NONE) begin
-      // If we are not at STATE_NONE, increment state
-      state <= state + 1;
+    if (!state[STATE_NONE]) begin
+      // If we are not at STATE_NONE, advance the one-hot cycle marker
+      state <= state << 1;
     end
 
-    if (state == STATE_NONE) begin
+    if (state[STATE_NONE]) begin
       // We are only busy when not in STATE_NONE
       busy <= 0;
     end else begin
       busy <= 1;
     end
 
-    case (state)
-      STATE_NONE: begin
+    case (1'b1)
+      state[STATE_NONE]: begin
         read_avail <= 0;
+        cram_a <= addr[21:16];
+        cram_data <= addr[15:0];
 
         cram_clk   <= 0;
         cram_adv_n <= 1;
@@ -270,14 +273,12 @@ module psram #(
 
         if (write_en) begin
           // Enter write_init
-          state <= WRITE_INITIAL_COUNT;
+          state <= STATE_WIDTH'(1) << WRITE_INITIAL_COUNT;
 
           if (bank_sel) cram_ce1_n <= 0;
           else cram_ce0_n <= 0;
 
           // Set address and output on dq
-          cram_a <= addr[21:16];
-          cram_data <= addr[15:0];
           data_out_en <= 1;
           // Store data in for future use
           latched_data_in <= data_in;
@@ -294,15 +295,13 @@ module psram #(
           // Set busy now instead of waiting for the state change
           busy <= 1;
         end else if (read_en) begin
-          state <= READ_INITIAL_COUNT;
+          state <= STATE_WIDTH'(1) << READ_INITIAL_COUNT;
 
           // Activate chip
           if (bank_sel) cram_ce1_n <= 0;
           else cram_ce0_n <= 0;
 
           // Set address and output on dq
-          cram_a <= addr[21:16];
-          cram_data <= addr[15:0];
           data_out_en <= 1;
 
           // Enable address latching
@@ -316,20 +315,20 @@ module psram #(
       end
 
       // Writes
-      STATE_WRITE_ADV_END: begin
+      state[STATE_WRITE_ADV_END]: begin
         // Continue holding address after setting adv high
         cram_adv_n <= 1;
       end
-      STATE_WRITE_ADDR_LATCH_END: begin
+      state[STATE_WRITE_ADDR_LATCH_END]: begin
         // No longer sending address data on cram_dq
         data_out_en <= 0;
       end
-      STATE_WRITE_DATA_START: begin
+      state[STATE_WRITE_DATA_START]: begin
         // Provide data to write
         data_out_en <= 1;
         cram_data   <= latched_data_in;
       end
-      STATE_WRITE_DATA_END: begin
+      state[STATE_WRITE_DATA_END]: begin
         // Unlatch write enable and banks
         cram_we_n <= 1;
 
@@ -340,27 +339,27 @@ module psram #(
         cram_lb_n <= 1;
 
       end
-      STATE_WRITE_HOLD_END: begin
-        state <= STATE_NONE;
+      state[STATE_WRITE_HOLD_END]: begin
+        state <= STATE_WIDTH'(1) << STATE_NONE;
         data_out_en <= 0;
         busy <= 0;
       end
 
       // Reads
-      STATE_READ_ADV_END: begin
+      state[STATE_READ_ADV_END]: begin
         // Continue holding address after setting adv high
         cram_adv_n <= 1;
       end
-      STATE_READ_ADDR_LATCH_END: begin
+      state[STATE_READ_ADDR_LATCH_END]: begin
         // No longer sending address data on cram_dq
         data_out_en <= 0;
       end
-      STATE_READ_DATA_ENABLE: begin
+      state[STATE_READ_DATA_ENABLE]: begin
         // Data should arrive shortly, enable output
         cram_oe_n <= 0;
       end
-      STATE_READ_DATA_RECEIVED: begin
-        state <= STATE_NONE;
+      state[STATE_READ_DATA_RECEIVED]: begin
+        state <= STATE_WIDTH'(1) << STATE_NONE;
 
         // Actually read data
         read_avail <= 1;

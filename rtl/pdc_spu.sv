@@ -536,16 +536,19 @@ module pdc_spu #(parameter logic ADDRESS_LOOKAHEAD = 0) (
                         if (ramp_clock <= 0) begin ramp_clock = ramp_clock+4'd13; ramp_counter = ramp_counter+32'd1; ramp_pending = 1; end
                     end
                     reset_channel(); busy<= 1;
-                    if (sample_pending) begin left_mix = 0; right_mix = 0; state<= CHANNEL; end
+                    if (sample_pending) state<= CHANNEL;
                     else if (env_pending) state<= ENVELOPE;
                     else begin busy<=0;state<=IDLE;end
                 end
-                state[$clog2(CHANNEL)]: if (channel_position[16]) state<= OUTPUT_SCALE;
+                state[$clog2(CHANNEL)]: begin
+                    if (channel_position[0]) begin left_mix=0;right_mix=0;end
+                    if (channel_position[16]) state<= OUTPUT_SCALE;
                     else if (!current_channel_enabled) skip_disabled_channels();
                     else begin
                         next_phase <= {1'b0,phase_acc[channel[3:0]]}+{1'b0,phase[channel[3:0]]};
                         state<=CHANNEL_PHASE;
                     end
+                end
                 state[$clog2(CHANNEL_PHASE)]: begin
                         phase_acc[channel[3:0]] <= next_phase[18:0];
                         mix_phase<=next_phase[18:0];

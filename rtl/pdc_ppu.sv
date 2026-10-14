@@ -92,6 +92,7 @@ module pdc_ppu (
     logic hflip, vflip, blending;
     (* preserve *) logic [4:0] bpp;
     (* preserve, dont_retime *) logic [21:0] tile_address;
+    (* preserve, dont_merge *) logic [15:0] tile_word_select;
     logic [5:0] tile_row_y;
     logic [21:0] row_index, word_offset;
     logic [12:0] clip_address_low;
@@ -107,7 +108,12 @@ module pdc_ppu (
     logic [17:0] rom_buffer_address;
     logic [255:0] rom_buffer;
     wire buffered_word = rom_buffer_valid && tile_address[21:4]==rom_buffer_address;
-    wire [15:0] rom_word = rom_buffer[tile_address[3:0]*16 +:16];
+    logic [15:0] rom_word;
+    always_comb begin
+        rom_word=0;
+        for (int word_index=0;word_index<16;word_index++)
+            rom_word|=rom_buffer[word_index*16 +:16] & {16{tile_word_select[word_index]}};
+    end
     wire [15:0] buffered_pixels = bpp==16 ? rom_word : {rom_word[7:0],rom_word[15:8]};
     logic [21:0] bitmap_address, next_memory_address;
     logic [16:0] compressed_product;
@@ -345,6 +351,15 @@ module pdc_ppu (
     pdc_sprite_bank sprites_3(.clk, .write(sprite_write && sprite_write_address[1:0]==2'd3),
         .write_address(sprite_write_address[9:2]), .write_data(sprite_write_data),
         .read_address(next_sprite_address), .read_data(sprite_memory_q3));
+    task automatic set_tile_address(input logic [21:0] value);
+        tile_address<=value;
+        tile_word_select<=16'b1<<value[3:0];
+    endtask
+`ifdef PDC_VERIFY_MMIO_CYCLES
+    always_ff @(posedge clk)
+        if (!reset && tile_word_select!=(16'b1<<tile_address[3:0]))
+            $fatal(1,"Graphics line selector differs from the tile address");
+`endif
     task automatic fetch(input logic [21:0] address, input state_t next_state);
         next_memory_address = address; memory_request <= 1; resume_state <= next_state; state <= TILE_FETCH;
     endtask
@@ -390,7 +405,7 @@ module pdc_ppu (
             sprite_index <= 0; output_x = 0; screen_y = 0; screen_x <= 0; tile_x = 0;
             tile_width = 0; tile_height = 0; width_shift = 0; height_shift = 0; scroll_x = 0; map_y <= 0; tile_position = 0;
             tile_number = 0; tile_attr = 0; tile_palette = 0; hflip <= 0; vflip = 0;
-            blending = 0; tile_address <= 0; tile_end_offset <= 0; pixel_buffer <= 0; bit_shift = 0;
+            blending = 0; set_tile_address(0); tile_end_offset <= 0; pixel_buffer <= 0; bit_shift = 0;
             tile_pixel = 0; bitmap_low = 0; fetched_word <= 0; bitmap_address = 0;
         end else if (!ready) begin
             if (clear_index == 1023) ready<= 1; else clear_index = clear_index + 10'd1;
@@ -510,7 +525,7 @@ module pdc_ppu (
                     fetch({6'b0,bg[bg_index][5]} + 22'(map_y >> 1),BITMAP_HIGH);
                 end
                 state[$clog2(BITMAP_HIGH)]: begin
-                    tile_address <= {6'(map_y[0] ? fetched_word >> 8 : fetched_word),bitmap_low};
+                    set_tile_address({6'(map_y[0] ? fetched_word >> 8 : fetched_word),bitmap_low});
                     bitmap_address = {6'(map_y[0] ? fetched_word >> 8 : fetched_word),bitmap_low};
 
                     tile_palette = bg[bg_index][2][11:8]; hflip <= 0; blending = bg[bg_index][3][8]; state <= TILE_SETUP;
@@ -554,12 +569,12 @@ module pdc_ppu (
                     state <= TILE_ADDRESS;
                 end
                 state[$clog2(TILE_ADDRESS)]: begin
-                    tile_address <= (22'(object_sprite ? sprite_segment : bg[bg_index][6])<<6)+word_offset;
+                    set_tile_address((22'(object_sprite ? sprite_segment : bg[bg_index][6])<<6)+word_offset);
                     state <= TILE_SETUP;
                 end
                 state[$clog2(TILE_SETUP)]: begin
                     pixel_buffer <= 0; bit_shift = 7'(0-int'(bpp)); tile_pixel = 0; tile_x = screen_x;
-                    if (hflip) tile_address <= tile_address + 22'(tile_end_offset);
+                    if (hflip) set_tile_address(tile_address + 22'(tile_end_offset));
                     if (screen_x < 0) begin
                         state <= CLIP_SETUP;
                     end else state <= TILE_PIXEL;
@@ -588,7 +603,7 @@ module pdc_ppu (
                     if (clip_count==0) begin skipped_pixels<=clip_next_quotient;state <= CLIP_APPLY;end
                 end
                 state[$clog2(CLIP_APPLY)]: begin
-                    tile_address <= {clip_address_low[12] ? clip_address_high_one : clip_address_high_zero,clip_address_low[11:1]};
+                    set_tile_address({clip_address_low[12] ? clip_address_high_one : clip_address_high_zero,clip_address_low[11:1]});
                     tile_pixel = 10'(skipped_pixels); tile_x = screen_x + 12'(skipped_pixels);
                     bit_shift = bit_shift - 7'({3'b0,clip_bit_offset});
                     state <= TILE_PIXEL;
@@ -610,14 +625,14 @@ module pdc_ppu (
                             pixel_buffer <= hflip ? {buffered_pixels,pixel_buffer[31:16]} : {pixel_buffer[15:0],buffered_pixels};
                             bit_shift = bit_shift+7'd16;
                         end else fetch(tile_address,TILE_WORD);
-                        tile_address <= hflip ? decrement22(tile_address) : increment22(tile_address);
+                        set_tile_address(hflip ? decrement22(tile_address) : increment22(tile_address));
                     end else begin
                         bit_shift = bit_shift-7'(bpp); tile_pixel = tile_pixel+10'd1; tile_x = tile_x+12'd1;
                         // The palette pipeline consumed the old buffer. Prepare its next word in parallel.
                         if (bit_shift<0 && tile_pixel<tile_width && tile_x<320 && buffered_word) begin
                             pixel_buffer <= hflip ? {buffered_pixels,pixel_buffer[31:16]} : {pixel_buffer[15:0],buffered_pixels};
                             bit_shift = bit_shift+7'd16;
-                            tile_address <= hflip ? decrement22(tile_address) : increment22(tile_address);
+                            set_tile_address(hflip ? decrement22(tile_address) : increment22(tile_address));
                         end
                     end
                 state[$clog2(TILE_NEXT)]: if (object_sprite) begin sprite_index <= sprite_index+9'd1; state <= SPRITE_START; end
@@ -626,7 +641,7 @@ module pdc_ppu (
                     screen_x <= advanced_screen_x;
                     if (!bg[bg_index][3][0]) state <= BG_TILE;
                     else if (advanced_screen_x >= 320) state <= NEXT_OBJECT;
-                    else begin tile_address <= bitmap_address; state <= TILE_SETUP; end
+                    else begin set_tile_address(bitmap_address); state <= TILE_SETUP; end
                 end
                 state[$clog2(NEXT_OBJECT)]: if (!bg_index) begin bg_index = 1; state <= BG_START; end
                     else begin sprite_index <= 0; state <= SPRITE_START; end

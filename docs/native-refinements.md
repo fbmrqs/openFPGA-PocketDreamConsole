@@ -354,3 +354,28 @@ entries, preserving the hardware-confirmed original core. It prevents duplicate
 runners within a workspace. Repairable failures are saved for the authorized
 hourly repair-and-retry follow-up; window alerts are reserved for verified
 installation or a missing card.
+
+## Graphics, memory-pin and mixer timing correction
+
+The CPU/display candidate completed the original game runs and all six intended
+extra-ROM runs; Oui-Oui and Dora still failed independently. The compiled slow
+setup corners measured -0.362 ns and -0.356 ns. The previous CPU/scanout paths
+were absent from the ten worst paths, while the worst remaining paths included
+PSRAM control decode/address presentation, graphics line-word selection, and
+incoming CPU cycles through sound sample eligibility into mixer reset enables.
+Other audited timing categories passed.
+
+The next candidate registers a one-hot graphics word selector with every tile
+address update, retaining the same clock-by-clock buffer consumption. PSRAM
+uses a one-hot cycle marker and prepares idle address outputs independently of
+request eligibility while chip selects are inactive. Sound clears its mixer
+on the existing first channel-dispatch clock rather than the eligibility clock.
+None adds a modeled cycle or relaxes the board/pin timing requirements.
+
+Focused graphics checks passed 682 scanlines/218,240 pixels in each of two
+ROM-transfer modes, including both sprite blend orders at all depths. Sound
+matched 251,851 stereo samples and 288,000 register/IRQ snapshots (8 clocks
+for silent updates, 119 for dense updates). Both PSRAM dies passed 512
+pin-level read/write cases with unchanged 15-clock reads and 14-clock writes.
+Pink and PDC100 matched ten production-output frames with unchanged total
+clock counts. Full game validation and physical timing closure remain pending.
