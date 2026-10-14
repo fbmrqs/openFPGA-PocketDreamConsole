@@ -517,3 +517,20 @@ actual scene against reference audio, CPU, video, backlog and output FIFOs.
 Each scene gets separate source-bound evidence. Full scene/library checks,
 physical timing and device listening confirmation remain required. The
 controls/PSRAM build is independent and contains no mixer change.
+
+The first full Hair Salon replay of the pipelined mixer still overflowed at
+frame 896. All CPU, banking, video and stereo comparisons passed up to that
+point; the faster mixer alone provides insufficient headroom. This failed
+candidate remains preserved in `build/native-mixer-workspace` and was not
+installed or used to start FPGA compilation.
+
+The next candidate also lets the instruction boundary proceed on peripheral
+completion instead of waiting for the scheduler's state transition. It requires
+all peripheral engines to be idle, no pending line start, a non-retired CPU,
+available real-time credit, and equality between the registered and current
+IRQ/FIQ state. The interrupt equality preserves the settling clock that the
+unrestricted prototype violated. Scheduler sequencing, modeled CPU cycles,
+ROM latency and clock rates are retained. Both original ROMs matched ten frames
+of CPU, banking, video and stereo execution at the production clock with the
+interrupt-order assertions enabled. The full affected-scene checks and all
+release qualification gates remain pending.

@@ -111,7 +111,12 @@ module pdc_system #(
         cpu_reset <= reset || system_reset || !ram_ready || !ppu_ready || watchdog_reset;
     end
     assign ready = !cpu_reset;
-    assign run = scheduler == EXECUTE && !retired && (!REALTIME || !credit[CREDIT_BITS-1]);
+    wire peripherals_idle = !io_busy && !spu_busy && !ppu_busy && !start_line;
+    wire interrupt_snapshot_current = cpu_irq==irq && cpu_fiq==fiq;
+    // Start on peripheral completion only after the registered interrupt view settles.
+    assign run = (scheduler == EXECUTE ||
+                  (scheduler == WAIT_PERIPHERALS && peripherals_idle && interrupt_snapshot_current)) &&
+                 !retired && (!REALTIME || !credit[CREDIT_BITS-1]);
     assign cycle_tick = phase>=PHASE_BITS'(CLOCK_KHZ-27000);
     assign cycle_backlog = credit[CREDIT_BITS-1] ? 16'b0 : |credit[CREDIT_BITS-2:16] ? 16'hffff : credit[15:0];
     always_ff @(posedge clk) begin
@@ -244,7 +249,7 @@ module pdc_system #(
                     else scheduler<=WAIT_PERIPHERALS;
                 end
                 WAIT_DMA: if (!dma_busy && !dma_start) scheduler<=WAIT_PERIPHERALS;
-                WAIT_PERIPHERALS: if (!io_busy && !spu_busy && !ppu_busy && !start_line) scheduler <= EXECUTE;
+                WAIT_PERIPHERALS: if (peripherals_idle) scheduler <= EXECUTE;
                 default: scheduler <= WAIT_READY;
             endcase
         end
