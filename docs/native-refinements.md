@@ -565,3 +565,25 @@ checks passed, retaining two-clock RAM and five-clock MMIO budgets. Both
 originals also matched ten production-clock full-system frames. This source
 requires fresh full scene/library validation and physical timing; existing
 changed-source system receipts are not reused.
+
+## Optional ROM success during combined validation
+
+Source `722ee41` passed all four 1,800-frame music-scene comparisons and both
+original ROM comparisons. Its fresh library run also passed Oui-Oui's complete
+CRC readback and 1,800-frame production-output comparison; the remaining ROMs
+are still running. Oui-Oui is therefore qualified for simulation on that source,
+but remains without device confirmation and the latest source needs its own
+check.
+
+The temporary mixer collectors incorrectly required the passing ROM set to
+equal exactly the six previously confirmed extra profiles, rejecting any
+additional success. They also rejected the library supervisor's nonzero exit
+even when its completed record contained only independently failed optional
+ROMs. The collector-only recovery checks completed current-source records,
+assets and every required scene/ROM receipt, then requires the six confirmed
+profiles as a subset of successes. Additional qualified profiles are accepted;
+independent optional failures remain excluded and logged. An incomplete record,
+stale evidence or missing confirmed ROM still blocks compilation. The recovery
+waits for the original collector to finish and resumes compilation/packaging
+without changing HDL, receipts or replaying completed tests. Existing job
+history is preserved. No new FPGA package or card installation is ready yet.
