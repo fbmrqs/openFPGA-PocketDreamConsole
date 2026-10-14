@@ -638,3 +638,11 @@ qualification remains pending. The next frozen build will run physical
 compilation alongside independent simulations, then require all current-source
 receipts, four-corner timing and package validation before installation. This
 ordering does not relax any release gate.
+
+Quartus rejected the inline generate-loop `genvar` declaration in `05ee953`
+during initial analysis. Source `8fca68a` moves that declaration outside the
+loop, matching the syntax already used by the arbiter. A new frozen
+`build/native-prefix-workspace` runs fresh compilation and qualification;
+independent simulations in the rejected workspace remain running and are not
+used as passing receipts for the new source. The declaration change passed
+Verilator lint. Compiler acceptance and all release gates still need checking.
