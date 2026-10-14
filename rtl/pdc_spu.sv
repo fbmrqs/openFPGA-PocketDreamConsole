@@ -56,8 +56,9 @@ module pdc_spu #(parameter logic ADDRESS_LOOKAHEAD = 0) (
     logic [4:0] next_enabled_channel;
     logic [16:0] next_enabled_position;
     wire [15:0] later_enabled, next_enabled_grant;
+    genvar voice;
     generate
-        for (genvar voice=0;voice<16;voice++) begin : channel_selection
+        for (voice=0;voice<16;voice++) begin : channel_selection
             if (voice==0) begin
                 assign later_enabled[voice]=1'b0;
                 assign next_enabled_grant[voice]=1'b0;
