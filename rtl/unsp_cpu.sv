@@ -286,12 +286,26 @@ module unsp_cpu (
             $fatal(1,"CPU external-memory classification does not match bus address");
 `endif
     function automatic logic [3:0] classify_fetched(input logic [15:0] word);
-        return {word[15:12]<15 && word[8:3]<16 && word[11:9]==7,
+        return {word[8:7]==2'b00 && word[11:9]==7,
+                word[8:6]==3'b001 && !(word[11] && word[10]),
+                word[8:6]==3'b011,
+                word[8:3]==6'b100000 && !(word[11] && word[10]) && !(word[2] && word[1])}
+                & {4{!(&word[15:12])}};
+    endfunction
+`ifdef PDC_VERIFY_MMIO_CYCLES
+    initial begin
+        for (int opcode=0;opcode<65536;opcode++) begin
+            logic [15:0] word;
+            logic [3:0] expected_class;
+            word=16'(opcode);
+            expected_class={word[15:12]<15 && word[8:3]<16 && word[11:9]==7,
                 word[15:12]<15 && word[8:3]>=8 && word[8:3]<16 && word[11:9]<6,
                 word[15:12]<15 && word[8:3]>=24 && word[8:3]<32,
                 word[15:12]<15 && word[8:3]==32 && word[11:9]<6 && word[2:0]<6};
-    endfunction
-`ifdef PDC_VERIFY_MMIO_CYCLES
+            if (classify_fetched(word)!=expected_class)
+                $fatal(1,"Instruction class differs at opcode %h",word);
+        end
+    end
     always_ff @(posedge clk)
         if (!reset && prefetch_valid && prefetch_class!=classify_fetched(prefetch_word))
             $fatal(1,"Prepared instruction class differs from its prefetched opcode");

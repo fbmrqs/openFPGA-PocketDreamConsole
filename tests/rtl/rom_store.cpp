@@ -71,6 +71,7 @@ int main() {
         timeout=0;while (!dut.rom_ack && timeout++<10000) tick();
         if (!dut.rom_ack || dut.rom_data!=halfword(dut.rom_address)) fail("ROM read or byte order mismatch");
         uint64_t read_clocks=(time-read_started+1)/2;
+        if (read_clocks>128) fail("ROM miss exceeds the production simulation latency budget");
         if (read_clocks>maximum_read_clocks) maximum_read_clocks=read_clocks;
         dut.rom_request=0;settle(12);
     }

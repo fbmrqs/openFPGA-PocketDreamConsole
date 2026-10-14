@@ -607,3 +607,34 @@ Source `71e5834`, which already captures the new bus grant directly, is now
 compiling in `build/native-decode-workspace` after the earlier compiler exited.
 Its physical timing remains pending; simulation success does not qualify a
 bitstream or establish that the physical music distortion is resolved.
+
+## Control-path timing repair
+
+The `71e5834` compilation failed slow setup at -0.446/-0.326 ns; fast setup
+passed at 3.717/4.024 ns. The earlier graphics grant path no longer appears
+among the reported worst paths. The new report identifies the PSRAM output
+enable through its state-case priority, the sound channel's binary eligibility
+priority chain, uncached instruction classification after the RAM read mux,
+and ROM response matching driving the entire line-capture enable.
+
+The next candidate updates PSRAM OE in a separate marker-controlled process,
+preserving pin cycles. Sound eligibility uses the existing one-hot channel
+position, parallel prefix grants and an OR encoder instead of binary comparisons
+feeding a priority chain. Instruction class ranges are expressed as their exact
+bit patterns, with all 65,536 opcode classifications checked against the
+previous predicates. ROM response acceptance is registered before writing the
+wide line, adding one system clock to a cache miss while retaining its contents,
+tag and acknowledgment association. The ROM-adapter regression now enforces the
+128-clock production simulation budget under its delayed SDRAM fixture.
+
+Focused PSRAM checks passed 512 transactions with unchanged 15/14-clock
+read/write timing. CPU checks passed 184,035 cases and both 4,096-instruction
+boot traces, retaining 778/845-clock streams. Both sound register-address modes
+matched 251,851 stereo samples and 288,000 register/IRQ snapshots, retaining
+59-clock dense and eight-clock silent updates. The ROM adapter passed complete
+8/16/64 MiB loads, 1,536 delayed reads, reloads and corruption rejection; worst
+miss latency was 105 clocks, below the 128-clock modeled budget. Full
+qualification remains pending. The next frozen build will run physical
+compilation alongside independent simulations, then require all current-source
+receipts, four-corner timing and package validation before installation. This
+ordering does not relax any release gate.

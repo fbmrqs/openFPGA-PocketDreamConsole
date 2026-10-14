@@ -55,13 +55,34 @@ module pdc_spu #(parameter logic ADDRESS_LOOKAHEAD = 0) (
     (* keep *) wire [4:0] incremented_channel=channel+5'd1;
     logic [4:0] next_enabled_channel;
     logic [16:0] next_enabled_position;
-    always_comb begin
-        next_enabled_channel=5'd16;next_enabled_position=17'h10000;
-        for (int voice=15;voice>=0;voice--)
-            if (channel_enabled[voice] && 5'(voice)>channel) begin
-                next_enabled_channel=5'(voice);next_enabled_position=17'b1<<voice;
+    wire [15:0] later_enabled, next_enabled_grant;
+    generate
+        for (genvar voice=0;voice<16;voice++) begin : channel_selection
+            if (voice==0) begin
+                assign later_enabled[voice]=1'b0;
+                assign next_enabled_grant[voice]=1'b0;
+            end else begin
+                assign later_enabled[voice]=channel_enabled[voice] && |channel_position[voice-1:0];
+                assign next_enabled_grant[voice]=later_enabled[voice] && !(|later_enabled[voice-1:0]);
             end
+        end
+    endgenerate
+    always_comb begin
+        next_enabled_channel={!(|next_enabled_grant),4'b0};
+        next_enabled_position={!(|next_enabled_grant),next_enabled_grant};
+        for (int voice=0;voice<16;voice++)
+            next_enabled_channel|=5'(voice) & {5{next_enabled_grant[voice]}};
     end
+`ifdef PDC_VERIFY_MMIO_CYCLES
+    always_ff @(posedge clk) begin : verify_channel_selection
+        logic [4:0] expected_channel;
+        expected_channel=5'd16;
+        for (int voice=15;voice>=0;voice--)
+            if (channel_enabled[voice] && 5'(voice)>channel) expected_channel=5'(voice);
+        if (!reset && busy && next_enabled_channel!=expected_channel)
+            $fatal(1,"One-hot sound eligibility differs from the next enabled channel");
+    end
+`endif
     task automatic skip_disabled_channels;
         channel_jump=1;channel_position<=next_enabled_position;
     endtask

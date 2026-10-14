@@ -260,6 +260,12 @@ module psram #(
 
   assign cram_dq = data_out_en ? cram_data : 16'hZZ;
 
+  // OE only changes at these markers; avoid the unrelated state-case priority.
+  always @(posedge clk) begin
+    if (state[STATE_NONE] || state[STATE_READ_DATA_RECEIVED]) cram_oe_n <= 1;
+    else if (state[STATE_READ_DATA_ENABLE]) cram_oe_n <= 0;
+  end
+
   always @(posedge clk) begin
     if (!state[STATE_NONE]) begin
       // If we are not at STATE_NONE, advance the one-hot cycle marker
@@ -283,7 +289,6 @@ module psram #(
         cram_cre   <= 0;
         cram_ce0_n <= 1;
         cram_ce1_n <= 1;
-        cram_oe_n  <= 1;
         cram_we_n  <= 1;
         cram_ub_n  <= 1;
         cram_lb_n  <= 1;
@@ -370,10 +375,6 @@ module psram #(
         // No longer sending address data on cram_dq
         data_out_en <= 0;
       end
-      state[STATE_READ_DATA_ENABLE]: begin
-        // Data should arrive shortly, enable output
-        cram_oe_n <= 0;
-      end
       state[STATE_READ_DATA_RECEIVED]: begin
         state <= STATE_WIDTH'(1) << STATE_NONE;
 
@@ -388,7 +389,6 @@ module psram #(
         cram_ub_n <= 1;
         cram_lb_n <= 1;
 
-        cram_oe_n <= 1;
 
         // Clear busy now, so we don't have to wait for the state change
         busy <= 0;

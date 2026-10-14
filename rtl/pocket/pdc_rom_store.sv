@@ -96,6 +96,8 @@ module pdc_rom_store (
     logic [255:0] system_line;
     logic [20:0] system_line_tag;
     logic system_line_valid;
+    (* preserve, dont_retime, maxfan = 32 *) logic response_accepted;
+    logic [280:0] accepted_response;
     assign rom_line_valid=system_line_valid;
     assign rom_line_data=system_line;
     wire system_line_hit=system_line_valid && system_line_tag==rom_address[24:4];
@@ -110,8 +112,11 @@ module pdc_rom_store (
         if (reset_system) begin
             sent<=0;rom_ack<=0;rom_data<=0;ready_sync<=0;rom_ready<=0;final_bank<=0;load_fault<=0;load_fault_sync<=0;
             system_line<=0;system_line_tag<=0;system_line_valid<=0;
+            response_accepted<=0;accepted_response<=0;
         end
         else begin
+            response_accepted<=response_valid && rom_request && sent && response_packet[280:256]==rom_address;
+            if (response_valid) accepted_response<=response_packet;
             ready_sync<={ready_sync[0],memory_ready};
             load_fault_sync<={load_fault_sync[0],bridge_fault};
             rom_ready<=ready_sync[1];final_bank<=selected_bank;load_fault<=load_fault_sync[1];
@@ -123,9 +128,11 @@ module pdc_rom_store (
                     sent<=1;rom_data<=system_line[rom_address[3:0]*16 +:16];rom_ack<=1;
                 end else if (!request_full) sent<=1;
             end
-            if (response_valid && rom_request && sent && response_packet[280:256]==rom_address) begin
-                system_line<=response_packet[255:0];system_line_tag<=rom_address[24:4];system_line_valid<=1;
-                rom_data<=response_packet[rom_address[3:0]*16 +:16];rom_ack<=1;
+            if (response_accepted) begin
+                system_line<=accepted_response[255:0];system_line_tag<=accepted_response[280:260];system_line_valid<=1;
+                if (rom_request && sent && accepted_response[280:256]==rom_address) begin
+                    rom_data<=accepted_response[rom_address[3:0]*16 +:16];rom_ack<=1;
+                end
             end
         end
     end
