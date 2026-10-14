@@ -379,3 +379,20 @@ for silent updates, 119 for dense updates). Both PSRAM dies passed 512
 pin-level read/write cases with unchanged 15-clock reads and 14-clock writes.
 Pink and PDC100 matched ten production-output frames with unchanged total
 clock counts. Full game validation and physical timing closure remain pending.
+
+## Verified library installation — 14 October 2026
+
+Source commit `9c79abd312d71956419cd18726cd7a6a841b55c0` passed the complete
+component checks, both original 1,800-frame Pocket output comparisons, and
+PDC50, TMNT and VideoJet 1–4 readback/output comparisons. All four physical
+timing corners passed; setup slacks in corner order were [0.213, 0.41, 4.006, 4.496] ns.
+Oui-Oui and Dora remain excluded after independent playback failures.
+
+`PocketDreamLibraryTest` and `PocketDreamLibraryTestExtra` were installed on
+the pinned SD card. All 53 manifested files were independently rehashed and
+writes flushed. The installed reversed bitstream SHA256 is
+`f566337bce50ecbf2a4d2861980bc1cbd7ae0ddbf60a51ebad54bb8ce4f4ed6e`.
+The original hardware-confirmed `PocketDreamConsoleFPGATest` core is unchanged.
+No ejection was performed. The readiness window alert was already displayed.
+Hardware testing of the new entries, black startup, display filters, sprite
+priority, gameplay and sound is still pending; save states remain unimplemented.
