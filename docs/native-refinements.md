@@ -187,18 +187,18 @@ startup behaviour remains to be confirmed.
 
 ## Display filters
 
-[Analogue documents 22 filters but permits 16 per core entry](https://www.analogue.co/developer/docs/openfpga/core-definition-files/video-json).
-The package provides two entries sharing the same ROM assets and bitstream:
+The final package uses one `Local.PocketDreamConsole` entry with the sixteen
+requested filters: Trinitron, Reflective Color LCD, GBC LCD+, Backlit Color LCD,
+Original GBA LCD, SP 101, GG, GG+, NGPC+, TurboExpress, PC Engine LT, Lynx+,
+GB DMG, GBP, Original NGP and Vacuum Fluorescent. Reflective LCD was listed
+twice and is included once. Normal remains implicit in Pocket's menu.
 
-| Entry | Filters beyond Normal |
-| --- | --- |
-| PocketDreamConsoleFPGATest | CRT, reflective/color/backlit LCD, GBC/GBC+, GBA/SP101, GG/GG+, NGPC/NGPC+, TurboExpress, PC Engine LT, Lynx/Lynx+, Pinball Neon |
-| PocketDreamConsoleFPGATestExtra | CRT, grayscale LCD, GB DMG, GBP, GBP Light, reflective/backlit LCD, NGP, Vacuum Fluorescent |
-
-Release packages use the corresponding names without `Test`. These are Pocket
-display filters, not extra PDC resolutions. The picture remains 320×240 with
-the existing aspect ratio and cadence. Normal is implicit in Pocket's menu.
-Filter availability depends on installed firmware.
+[Analogue's mode table and limit](https://www.analogue.co/developer/docs/openfpga/core-definition-files/video-json)
+allow these sixteen modes in a single entry. The picture remains 320×240
+with the existing aspect ratio and cadence. The previous Main/Extra split is
+retired. The release installer verifies off-card backups before replacing the
+old software entry and removing the other PDC test entries. Shared ROMs and
+unsupported archival dumps remain untouched.
 
 Monochrome modes require [command `0x00B8`](https://www.analogue.co/developer/docs/openfpga/host-target-commands).
 The bridge waits for the video domain to confirm the requested grayscale setting
@@ -411,3 +411,19 @@ pitch bending, throughout Hair Salon (Puzzle), Bunny Pinky (Action),
 Beeline 2 and Fun Match 2 (Table), including outside gameplay. Spoken voice
 and sound effects seem fine. A specific audio reproduction and fix are pending.
 Save states remain a later, unimplemented feature.
+
+## Official entry and controls
+
+The requested final identity is `Local.PocketDreamConsole`, version 0.2.1.
+A/B are swapped once at the Pocket controller input boundary in `core_top.sv`;
+all ROM profiles inherit it and no ROM bytes change. The controls description
+also maps PDC A to Pocket B and PDC B to Pocket A. Input JSON describes the
+read-only controls menu and does not change hardware input routing.
+
+This candidate changes no CPU, graphics, sound or framebuffer simulation
+source. Their passing full-game results can be reused only after an explicit
+audit confirms the sole system-evidence difference is the unmodeled Pocket
+top-level button wiring. Component/package policy checks and FPGA compilation
+are rerun. Timing and installation must pass for the new binary before the
+legacy card entries are retired. The musical lead distortion remains open;
+no sound behavior is changed in this controls/packaging update.

@@ -1,25 +1,26 @@
 # Pocket Dream Console on Analogue Pocket
 
 A native FPGA implementation of the μnSP CPU, SPG200 graphics, sound and board
-peripherals for PDC30 Pink and PDC100. On 12 October 2026, Pocket gameplay was
-confirmed at **full speed with clean audio**, following successful simulation,
-FPGA timing, verified installation and physical testing.
+peripherals. On 14 October 2026, Pocket testing confirmed full-speed gameplay,
+black startup, corrected sprite layers and all display filters in PDC30 Pink,
+PDC50, PDC100, TMNT and VideoJet TV Games 1–4. A musical-lead distortion report
+in four PDC30 games remains open; general sound effects and spoken voices were
+reported as working.
 
-The tested Pocket entry is **PocketDreamConsoleFPGATest**, version
-`0.1.0-sprite-groups`. That installed build is preserved as the recovery baseline.
-The current source adds startup black output, display filters and sprite priority
-corrections; see the [refinement notes](docs/native-refinements.md) for validation
-status, the Pot Pit reproduction, additional ROM candidates and save-state scope.
-See the [native FPGA guide](docs/native-fpga.md) for architecture, prerequisites,
-verification and build commands, and the [baseline record](docs/native-full-speed-baseline.json)
-for exact hashes and recovery paths. Save states, sleep/resume and exhaustive
-compatibility testing remain pending.
+The final entry is **PocketDreamConsole**. Version `0.2.1` consolidates the
+selected sixteen filters and swaps physical A/B globally in the core; this
+controls update still requires its new FPGA build and device confirmation.
+The previous confirmed bitstream is tagged `pocket-library-hardware-2026-10-14`
+and preserved in `build/native-selectors-workspace`. The installer saves
+verified off-card backups before replacing the software entry and removing
+old FPGA test entries. ROM bytes and archival dumps remain unchanged.
 
-The working local package is preserved in
-`build/native-mmio-workspace/dist/pocket-dc-native-experimental`.
-It contains private ROM copies and is excluded from Git, together with dumps,
-generated binaries, logs and dependency checkouts. Public release and pupdate
-integration are still pending.
+See the [refinement notes](docs/native-refinements.md) for exact validation,
+reproduction and remaining audio/save-state work, and the
+[native FPGA guide](docs/native-fpga.md) for architecture and build commands.
+Save states and sleep/resume remain unimplemented. Generated packages include
+private ROM copies and are Git-ignored; public release and pupdate integration
+remain pending.
 
 ## Earlier software emulator
 

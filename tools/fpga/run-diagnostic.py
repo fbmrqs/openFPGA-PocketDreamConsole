@@ -77,8 +77,8 @@ def failures(names):
 
 def install_package(library):
     label='library' if library else 'display'
-    command=[sys.executable,'tools/package_native.py','--experimental']+(['--rom-library'] if library else [])
-    package=root/('dist/pocket-dc-native-library' if library else 'dist/pocket-dc-native-experimental')
+    command=[sys.executable,'tools/package_native.py']+(['--rom-library'] if library else [])
+    package=root/('dist/pocket-dc-native-library' if library else 'dist/pocket-dc-native')
     if run(label+'-package',command):raise RuntimeError(label+' package validation failed')
     if run(label+'-package-test',[sys.executable,'tests/native_package.py',str(package)]):raise RuntimeError(label+' package test failed')
     status='diagnostic-'+label+'-install-status.json'
@@ -92,13 +92,13 @@ def install_package(library):
     if not same_card():raise RuntimeError('Card disconnected during '+label+' installation')
     save(status,state='installed',card=str(card),writes_flushed=True,ejected=False,hardware_test_pending=True)
     if library:
-        manifest=json.loads((package/'native-experimental-manifest.json').read_text())
+        manifest=json.loads((package/'native-manifest.json').read_text())
         sys.path.insert(0,str(root/'tools'))
         from rom_library import NATIVE_ROMS
         labels={rom.key:rom.label for rom in NATIVE_ROMS}
         message='Installed and verified extra ROMs: '+', '.join(labels[key] for key in manifest['rom_library'])+'.'
         if manifest['excluded_roms']:message+='\n\nFailed profiles excluded: '+', '.join(labels[key] for key in manifest['excluded_roms'])+'. See their validation logs.'
-        message+='\n\nOpen PocketDreamLibraryTest or PocketDreamLibraryTestExtra. Hardware confirmation is pending. The unsupported dumps remain under Assets/pdc/dumps/Unsupported.'
+        message+='\n\nOpen PocketDreamConsole. A/B are swapped globally and all 16 selected filters are in this entry. Previous core entries were backed up and removed. Hardware confirmation of the control swap is pending. The unsupported dumps remain under Assets/pdc/dumps/Unsupported.'
         alert('Pocket verified game library is ready',message)
     else:
         alert('Pocket display refinement is ready','The display refinement is installed, verified and flushed. Check black startup, display filters and the Pot Pit dog shadow: Pink → Venture (3) → Pot Pit (4) → Enter twice.\n\nThe extra-ROM checks are independent. Failed profiles will be omitted. Hardware confirmation is pending.')

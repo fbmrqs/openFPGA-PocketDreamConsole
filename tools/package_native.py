@@ -2,6 +2,7 @@
 """Package a validated native core or an explicitly experimental hardware test."""
 from pathlib import Path
 import argparse
+import time
 import json
 import re
 import shutil
@@ -12,18 +13,48 @@ from rom_library import NATIVE_ROMS, validate_native
 
 ROOT = Path(__file__).resolve().parents[1]
 
-# APF permits at most sixteen display modes per core entry. Both entries use
-# the same bitstream and common ROM assets; Normal remains implicit.
-DISPLAY_PROFILES = {
-    'main': (0x10, 0x30, 0x31, 0x32, 0x40, 0x41, 0x42, 0x51,
-             0x52, 0x62, 0x63, 0x71, 0x72, 0x81, 0x82, 0xE0),
-    'extra': (0x10, 0x20, 0x21, 0x22, 0x23, 0x30, 0x40, 0x61, 0xE1),
-}
+# The selected filters fit the APF limit of sixteen modes in one entry.
+DISPLAY_MODES = (0x10, 0x30, 0x32, 0x40, 0x41, 0x42, 0x51, 0x52,
+                 0x63, 0x71, 0x72, 0x82, 0x21, 0x22, 0x61, 0xE1)
+LEGACY_CORES = ('Local.PocketDreamConsole', 'Local.PocketDreamConsoleFPGATest',
+                'Local.PocketDreamConsoleFPGATestExtra', 'Local.PocketDreamLibraryTest',
+                'Local.PocketDreamLibraryTestExtra')
 
 
-def video_definition(template, profile):
+def backup_core_entries(card):
+    backup = ROOT / 'build/card-core-backups' / str(time.time_ns())
+    for core_id in LEGACY_CORES:
+        for relative in ('Cores/' + core_id, 'Assets/pdc/' + core_id,
+                         'Licenses/' + core_id.removeprefix('Local.')):
+            source = card / relative
+            if not source.is_dir():
+                continue
+            destination = backup / relative
+            shutil.copytree(source, destination)
+            for path in source.rglob('*'):
+                if path.is_file() and digest(path, 'sha256') != digest(destination / path.relative_to(source), 'sha256'):
+                    raise ValueError(f'Core backup verification failed: {path}')
+    return backup
+
+
+def retire_core_entries(card, core_id, files):
+    for legacy_id in LEGACY_CORES:
+        for relative in ('Cores/' + legacy_id, 'Assets/pdc/' + legacy_id,
+                         'Licenses/' + legacy_id.removeprefix('Local.')):
+            directory = card / relative
+            if not directory.is_dir():
+                continue
+            if legacy_id != core_id:
+                shutil.rmtree(directory)
+            else:
+                for path in directory.rglob('*'):
+                    if path.is_file() and path.relative_to(card).as_posix() not in files:
+                        path.unlink()
+
+
+def video_definition(template):
     return {'video': {**template['video'],
-        'display_modes': [{'id': f'0x{mode:02X}'} for mode in DISPLAY_PROFILES[profile]],
+        'display_modes': [{'id': f'0x{mode:02X}'} for mode in DISPLAY_MODES],
         'defaults': {**template['video'].get('defaults', {}), 'sharpness': 3}}}
 
 def fpga_verification(experimental):
@@ -82,7 +113,7 @@ def main():
                         help='Package a separate hardware test after all timing and validation gates pass.')
     parser.add_argument('--rom-library', action='store_true', help='Include additional ROM profiles that individually passed validation.')
     args = parser.parse_args()
-    shortname = ('PocketDreamLibrary' if args.rom_library else 'PocketDreamConsoleFPGA') + ('Test' if args.experimental else '')
+    shortname = 'PocketDreamConsole' + ('Test' if args.experimental else '')
     core_id = 'Local.' + shortname
     out = ROOT / ('dist/pocket-dc-native-library' if args.rom_library else
                   'dist/pocket-dc-native-experimental' if args.experimental else 'dist/pocket-dc-native')
@@ -128,14 +159,14 @@ def main():
     definition = json.loads((template / 'core.json').read_text())
     definition['core']['metadata'].update(
         platform_ids=['pdc'], shortname=shortname, author='Local', url='',
-        description='PDC ROM library: color LCD and CRT' if args.rom_library else 'PDC30 / PDC100: color LCD and CRT displays',
-        version='0.2.0-rom-library' if args.rom_library else '0.1.1-display-priority' if args.experimental else '0.1.0-native-preview', date_release='2026-10-13')
+        description='Pocket Dream Console FPGA core',
+        version='0.2.1', date_release='2026-10-14')
     definition['core']['framework']['dock']['supported'] = False
     write_json(core / 'core.json', definition)
     for name in ('audio.json', 'video.json', 'interact.json', 'variants.json'):
         shutil.copy2(template / name, core / name)
     video = json.loads((template / 'video.json').read_text())
-    write_json(core / 'video.json', video_definition(video, 'main'))
+    write_json(core / 'video.json', video_definition(video))
     if args.experimental:
         write_json(core / 'interact.json', {'interact': {'magic': 'APF_VER_1',
             'variables': [{'name': 'S', 'id': 1, 'type': 'number_u32',
@@ -163,8 +194,8 @@ def main():
          'extensions': ['rom'], 'address': '0x10000000', 'size_maximum': '0x4000000'}]}})
     write_json(core / 'input.json', {'input': {'magic': 'APF_VER_1', 'controllers': [{
         'type': 'default', 'mappings': [
-            {'id': 0, 'name': 'A', 'key': 'pad_btn_a'},
-            {'id': 1, 'name': 'B', 'key': 'pad_btn_b'},
+            {'id': 0, 'name': 'A', 'key': 'pad_btn_b'},
+            {'id': 1, 'name': 'B', 'key': 'pad_btn_a'},
             {'id': 10, 'name': 'Left Trigger', 'key': 'pad_trig_l'},
             {'id': 11, 'name': 'Right Trigger', 'key': 'pad_trig_r'},
             {'id': 20, 'name': 'Pause', 'key': 'pad_btn_start'},
@@ -208,16 +239,7 @@ def main():
     shutil.copy2(ROOT / 'docs/native-fpga.md', out / ('README-FPGA-EXPERIMENTAL.md' if args.experimental else 'README-FPGA.md'))
     for name in ('native-refinements.md', 'native-full-speed-baseline.json'):
         shutil.copy2(ROOT / 'docs' / name, out / name)
-    extra_id = core_id + 'Extra'
-    extra = out / 'Cores' / extra_id
-    shutil.copytree(core, extra)
-    definition = json.loads((extra / 'core.json').read_text())
-    definition['core']['metadata'].update(shortname=shortname + 'Extra',
-        description='PDC library: grayscale and fluorescent' if args.rom_library else 'PDC30 / PDC100: grayscale, NGP and fluorescent displays')
-    write_json(extra / 'core.json', definition)
-    write_json(extra / 'video.json', video_definition(video, 'extra'))
-    shutil.copytree(out / 'Assets/pdc' / core_id, out / 'Assets/pdc' / extra_id)
-    for entry in (core, extra):
+    for entry in (core,):
         validate_core_identity(entry)
         validate_input(json.loads((entry / 'input.json').read_text()))
         for name in ('core', 'audio', 'video', 'data', 'input', 'interact', 'variants'):
@@ -228,7 +250,7 @@ def main():
              for p in sorted(out.rglob('*')) if p.is_file()}
     write_json(out / ('native-experimental-manifest.json' if args.experimental else 'native-manifest.json'),
                {'hardware_verified': False, 'experimental': args.experimental,
-                'display_profiles': {core_id: 'main', extra_id: 'extra'},
+                'display_modes': list(DISPLAY_MODES), 'core_id': core_id,
                 'rom_count': len(ROMS) + len(selected_roms),
                 'rom_library': [rom.key for rom in selected_roms], 'excluded_roms': excluded_roms,
                 'memory_check': {'bank_bytes': 8388608, 'passes': 2, 'pink_crc32': '0x0C1DC0F3', 'pdc100_crc32': '0xCCD6C6D3'},
@@ -246,7 +268,7 @@ def main():
         card = args.install_to.resolve(strict=True)
         obsolete = []
         if args.rom_library:
-            for entry in (core_id, extra_id):
+            for entry in (core_id,):
                 for rom in NATIVE_ROMS:
                     if rom in selected_roms:
                         continue
@@ -263,6 +285,7 @@ def main():
                 continue
             if target.exists() and name.startswith(('Assets/pdc/common/', 'Platforms/')):
                 raise ValueError(f'Shared card file differs: {target}; installation stopped.')
+        backup = backup_core_entries(card) if not args.experimental else None
         for source in sorted(out.rglob('*')):
             if not source.is_file():
                 continue
@@ -278,6 +301,9 @@ def main():
                 raise ValueError(f'Card verification failed: {target}')
         for target in obsolete:
             target.unlink()
+        if backup:
+            retire_core_entries(card, core_id, files)
+            print(f'Retired previous core entries; verified backups: {backup}')
         print(f'Installed and verified on {card}; card remains mounted.')
     print('Physical Pocket boot, gameplay and memory timing still require a device test.')
 

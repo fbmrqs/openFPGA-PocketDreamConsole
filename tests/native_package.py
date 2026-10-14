@@ -12,13 +12,13 @@ class NativeSetup(unittest.TestCase):
     def test_diagnostic_menu(self):
         for core in (PACKAGE / 'Cores').iterdir():
             menu = json.loads((core / 'interact.json').read_text())['interact']['variables']
-            self.assertEqual([v['name'] for v in menu], list('SFOMRLWAB'))
-            self.assertEqual(len({v['address'] for v in menu}), 9)
+            self.assertEqual([v['name'] for v in menu], list('SFOMRLWAB') if MANIFEST['experimental'] else [])
+            self.assertEqual(len({v['address'] for v in menu}), 9 if MANIFEST['experimental'] else 0)
             self.assertTrue(all(v['type'] == 'number_u32' and not v['enabled'] for v in menu))
 
     def test_core_definition_files(self):
         cores = list((PACKAGE / 'Cores').iterdir())
-        self.assertEqual(len(cores), 2)
+        self.assertEqual(len(cores), 1)
         modes = set()
         bitstreams = []
         for core in cores:
@@ -45,9 +45,12 @@ class NativeSetup(unittest.TestCase):
                 self.assertTrue(all((PACKAGE / 'Assets/pdc/common' / slot['filename']).is_file() for slot in slots))
                 self.assertTrue(all(Path(slot['filename']).stem not in MANIFEST.get('excluded_roms', {}) for slot in slots))
         self.assertTrue(all(bitstream == bitstreams[0] for bitstream in bitstreams))
-        self.assertEqual(modes, {0x10, 0x20, 0x21, 0x22, 0x23, 0x30, 0x31, 0x32,
-            0x40, 0x41, 0x42, 0x51, 0x52, 0x61, 0x62, 0x63, 0x71, 0x72, 0x81,
-            0x82, 0xE0, 0xE1})
+        self.assertEqual(modes, {0x10, 0x30, 0x32, 0x40, 0x41, 0x42, 0x51, 0x52,
+            0x63, 0x71, 0x72, 0x82, 0x21, 0x22, 0x61, 0xE1})
+        controls = json.loads((cores[0] / 'input.json').read_text())['input']['controllers'][0]['mappings']
+        keys = {item['name']: item['key'] for item in controls}
+        self.assertEqual(keys['A'], 'pad_btn_b')
+        self.assertEqual(keys['B'], 'pad_btn_a')
 
 
 if __name__ == '__main__':
