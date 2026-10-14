@@ -202,14 +202,15 @@ module unsp_cpu (
             {shift_source,sb[in_fiq ? 2 : in_irq ? 1 : 0]};
     end
 
-    (* preserve, dont_retime *) logic [15:0] stack_increment, stack_decrement;
+    (* preserve, dont_retime *) logic [15:0] stack_address, stack_increment, stack_decrement;
     wire [15:0] stack_operand=state[$clog2(POP_DONE)] && stack_reg[2:0]==rs ? data_word : r[rs];
     always_ff @(posedge clk) begin
+        stack_address<=stack_operand;
         stack_increment<=increment16(stack_operand);stack_decrement<=decrement16(stack_operand);
     end
 `ifdef PDC_VERIFY_MMIO_CYCLES
     always_ff @(posedge clk)
-        if (!reset && ((state[$clog2(PUSH)] && stack_decrement!=decrement16(r[rs])) ||
+        if (!reset && ((state[$clog2(PUSH)] && (stack_address!=r[rs] || stack_decrement!=decrement16(r[rs]))) ||
             (state[$clog2(POP)] && stack_increment!=increment16(r[rs]))))
             $fatal(1,"Stack pointer lookahead differs from architectural register");
 `endif
@@ -618,13 +619,14 @@ module unsp_cpu (
             endcase
             if (!bus_valid) begin
                 // Interrupt/call pushes select SP without the operand-address mux.
-                bus_addr<=stack_bus_select ? {6'b0,r[0]} :
-                    state[$clog2(PUSH)] ? {6'b0,r[rs]} :
-                    state[$clog2(POP)] ? {6'b0,stack_increment} :
-                    operand_bus_select ? address : next_bus_address;
+                bus_addr<=({6'b0,r[0]} & {22{stack_bus_select}}) |
+                    ({6'b0,stack_address} & {22{state[$clog2(PUSH)]}}) |
+                    ({6'b0,stack_increment} & {22{state[$clog2(POP)]}}) |
+                    (address & {22{operand_bus_select}}) |
+                    (next_bus_address & {22{!(stack_bus_select || state[$clog2(PUSH)] || state[$clog2(POP)] || operand_bus_select)}});
                 // Select preclassified sources alongside their addresses.
                 bus_external<=stack_bus_select ? |r[0][15:14] :
-                    state[$clog2(PUSH)] ? |r[rs][15:14] :
+                    state[$clog2(PUSH)] ? |stack_address[15:14] :
                     state[$clog2(POP)] ? |stack_increment[15:14] :
                     operand_bus_select ? |address[21:14] : next_bus_external;
             end

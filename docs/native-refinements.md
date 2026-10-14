@@ -646,3 +646,30 @@ loop, matching the syntax already used by the arbiter. A new frozen
 independent simulations in the rejected workspace remain running and are not
 used as passing receipts for the new source. The declaration change passed
 Verilator lint. Compiler acceptance and all release gates still need checking.
+
+Source `8fca68a` completed compilation but failed slow setup at
+-0.315/-0.276 ns; fast setup passed at 4.006/4.462 ns. Hold, recovery and
+removal passed in all four corners. Its worst reported paths now run from CPU
+instruction/register selection through the address-source mux into `bus_addr`.
+A sound eligibility path into the channel counter missed by 0.022 ns. Both
+original 1,800-frame runs and the Hair Salon/Bunny Pinky scene runs passed;
+the remaining independent checks continue in the preserved failed workspace.
+
+The next correction captures the PUSH address alongside the existing stack
+increment/decrement lookahead and selects mutually exclusive CPU address sources
+with masked OR terms. An assertion checks the prepared address against the
+architectural stack register, including aliases. Sound captures the computed
+next enabled channel and position, consuming them only when their saved
+position/enabled snapshot still matches the current inputs. A changed snapshot
+waits for the preparation clock instead of using a stale selection. Sample
+arithmetic, pitch, modeled CPU cycles and clock rates are unchanged.
+
+The focused CPU comparison passed 184,035 cases and both 4,096-instruction
+boot traces, retaining 778/845-clock streams. Both originals matched ten
+production-clock frames with CPU, video, audio and interrupt-order assertions.
+Both sound register-address configurations matched all 251,851 samples and
+288,000 snapshots each, with unchanged 59/8-clock dense/silent budgets.
+Fresh full-system/library comparisons
+and physical timing remain mandatory. The next collector defers queued tests
+if its compiler fails while allowing already-active independent tests to finish;
+deferred tests are never recorded as passing or used to qualify a package.

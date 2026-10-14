@@ -55,6 +55,11 @@ module pdc_spu #(parameter logic ADDRESS_LOOKAHEAD = 0) (
     (* keep *) wire [4:0] incremented_channel=channel+5'd1;
     logic [4:0] next_enabled_channel;
     logic [16:0] next_enabled_position;
+    (* preserve, dont_retime *) logic [4:0] prepared_enabled_channel;
+    (* preserve, dont_retime *) logic [16:0] prepared_enabled_position;
+    logic [16:0] eligibility_position;
+    logic [15:0] eligibility_enabled;
+    wire eligibility_ready=eligibility_position==channel_position && eligibility_enabled==channel_enabled;
     wire [15:0] later_enabled, next_enabled_grant;
     genvar voice;
     generate
@@ -74,6 +79,12 @@ module pdc_spu #(parameter logic ADDRESS_LOOKAHEAD = 0) (
         for (int voice=0;voice<16;voice++)
             next_enabled_channel|=5'(voice) & {5{next_enabled_grant[voice]}};
     end
+    always_ff @(posedge clk) begin
+        prepared_enabled_channel<=next_enabled_channel;
+        prepared_enabled_position<=next_enabled_position;
+        eligibility_position<=channel_position;
+        eligibility_enabled<=channel_enabled;
+    end
 `ifdef PDC_VERIFY_MMIO_CYCLES
     always_ff @(posedge clk) begin : verify_channel_selection
         logic [4:0] expected_channel;
@@ -85,7 +96,13 @@ module pdc_spu #(parameter logic ADDRESS_LOOKAHEAD = 0) (
     end
 `endif
     task automatic skip_disabled_channels;
-        channel_jump=1;channel_position<=next_enabled_position;
+        if (eligibility_ready) begin
+            channel_jump=1;channel_position<=prepared_enabled_position;
+`ifdef PDC_VERIFY_MMIO_CYCLES
+            if (prepared_enabled_channel!=next_enabled_channel || prepared_enabled_position!=next_enabled_position)
+                $fatal(1,"Prepared sound selector differs from current eligibility");
+`endif
+        end
     endtask
     task automatic reset_channel;
         channel_clear=1;channel_position<=17'b1;
@@ -790,7 +807,7 @@ module pdc_spu #(parameter logic ADDRESS_LOOKAHEAD = 0) (
             endcase
         end
         if (channel_clear) channel<=5'd0;
-        else if (channel_jump) channel<=next_enabled_channel;
+        else if (channel_jump) channel<=prepared_enabled_channel;
         else if (channel_step) channel<=incremented_channel;
     end
 endmodule
