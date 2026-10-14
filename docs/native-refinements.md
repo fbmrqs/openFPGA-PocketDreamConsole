@@ -446,3 +446,18 @@ It captures frames 820–1599. Actual scene identity and whether the reference
 reproduces the reported pitch-bend distortion still need listening confirmation.
 Reference clips and state traces are private, generated files under
 `build/research/music-voice/`; they remain Git-ignored. No sound fix is claimed.
+
+Fabio listened to the Hair Salon reference WAV and confirmed it has no wobble,
+while the same scene on the Pocket does. During that scene, the diagnostic
+display mostly reads `S=0x0b81ffff`, with intermittent changes. Accounting for
+the bridge byte order, the register is `0xffff810b`: the CPU is running without
+a fault, the audio underflow and modeled-cycle overflow flags are set, and the
+reported processing backlog is saturated. Both flags latch until reset; this
+reading alone cannot distinguish a startup event from continuing starvation.
+
+A same-route full-system replay is running at the production 98.304 MHz clock,
+with Pocket output clock crossings and ROM-transfer latency. It checks the
+processing deadline, FIFO starvation and every resampled stereo pair against
+the reference, as well as CPU, banking and video. Its private status and log
+are `build/research/music-voice/replay-status.json` and `system-replay.log`.
+It has not yet reached the affected scene; no cause or sound fix is confirmed.
