@@ -587,3 +587,23 @@ stale evidence or missing confirmed ROM still blocks compilation. The recovery
 waits for the original collector to finish and resumes compilation/packaging
 without changing HDL, receipts or replaying completed tests. Existing job
 history is preserved. No new FPGA package or card installation is ready yet.
+
+Both combined sources (`722ee41` and `71e5834`) subsequently passed both
+original ROMs, all four music scenes and all eight extra profiles, including
+Oui-Oui and Dora. Each full-system run checked 1,800 production-output frames
+against its own frozen source. Neither additional profile has device
+confirmation yet. The recovery collectors accepted these completed receipts
+without replaying tests or changing their results.
+
+The earlier combined source `722ee41` failed setup timing at -0.389/-0.154 ns
+in the two slow corners; its fast corners passed at 4.181/4.489 ns. Hold,
+recovery and removal passed in all four corners. The worst path runs from the
+graphics memory request through active-grant selection and the lookahead
+address mux into the captured shared-bus address. Other slow-corner violations
+include SPU register reads into CPU state and SPU channel-register writes.
+The failed workspace and reports remain preserved and no package was installed.
+
+Source `71e5834`, which already captures the new bus grant directly, is now
+compiling in `build/native-decode-workspace` after the earlier compiler exited.
+Its physical timing remains pending; simulation success does not qualify a
+bitstream or establish that the physical music distortion is resolved.
