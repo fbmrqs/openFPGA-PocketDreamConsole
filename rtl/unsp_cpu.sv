@@ -117,6 +117,7 @@ module unsp_cpu (
     (* preserve *) logic [5:0] segment;
     logic prefetch_valid;
     logic [15:0] prefetch_word;
+    (* preserve, dont_retime *) logic [3:0] prefetch_class;
     (* preserve *) logic [5:0] branch_displacement;
     (* preserve *) logic branch_backwards;
 
@@ -284,7 +285,18 @@ module unsp_cpu (
         if (!reset && bus_valid && bus_external!=(bus_addr>=22'h4000))
             $fatal(1,"CPU external-memory classification does not match bus address");
 `endif
-    task automatic decode_fetched(input logic [15:0] word);
+    function automatic logic [3:0] classify_fetched(input logic [15:0] word);
+        return {word[15:12]<15 && word[8:3]<16 && word[11:9]==7,
+                word[15:12]<15 && word[8:3]>=8 && word[8:3]<16 && word[11:9]<6,
+                word[15:12]<15 && word[8:3]>=24 && word[8:3]<32,
+                word[15:12]<15 && word[8:3]==32 && word[11:9]<6 && word[2:0]<6};
+    endfunction
+`ifdef PDC_VERIFY_MMIO_CYCLES
+    always_ff @(posedge clk)
+        if (!reset && prefetch_valid && prefetch_class!=classify_fetched(prefetch_word))
+            $fatal(1,"Prepared instruction class differs from its prefetched opcode");
+`endif
+    task automatic decode_fetched(input logic [15:0] word,input logic [3:0] fetched_class);
         logic [3:0] fetched_op;
         logic [2:0] fetched_rd,fetched_rs;
         logic [5:0] fetched_mode;
@@ -304,21 +316,21 @@ module unsp_cpu (
             fetched_mode>=24 && fetched_mode<32,fetched_mode>=16 && fetched_mode<24,
             fetched_mode>=8 && fetched_mode<16,fetched_mode<8};
         advance_pc();state<=DECODE;
-        if (fetched_op<15 && fetched_mode<16 && fetched_rd==7) begin
+        if (fetched_class[3]) begin
             if (branch_condition(fetched_op,r[6])) state<=BRANCH;
             else finish(2);
-        end else if (fetched_op<15 && fetched_mode>=8 && fetched_mode<16 && fetched_rd<6) begin
+        end else if (fetched_class[2]) begin
             cycles <= 2;state<=ALU;
-        end else if (fetched_op<15 && fetched_mode>=24 && fetched_mode<32) begin
+        end else if (fetched_class[1]) begin
             state<=INDIRECT;
-        end else if (fetched_op<15 && fetched_mode==32 && fetched_rd<6 && fetched_rs<6) begin
+        end else if (fetched_class[0]) begin
             cycles <= 3;state<=ALU;
         end
     endtask
     task automatic finish_prefetch(input logic [15:0] word);
-        prefetch_word<=word;prefetch_valid<=1;state <= BOUNDARY;
+        prefetch_word<=word;prefetch_class<=classify_fetched(word);prefetch_valid<=1;state <= BOUNDARY;
         if (run && !(fiq && !in_fiq && fiq_enable) && !(irq!=0 && !in_irq && irq_enable)) begin
-            prefetch_valid<=0;decode_fetched(word);
+            prefetch_valid<=0;decode_fetched(word,classify_fetched(word));
         end
     endtask
 
@@ -339,7 +351,7 @@ module unsp_cpu (
             immediate_word = 0; address = 0; target_pc = 0; op<=0;rd<=0;rs<=0;
             mode<=0;remaining = 0; total <= 0; mac_index = 0; stack_reg = 0;
             resume_state <= RESET_DONE;
-            prefetch_valid<=0;prefetch_word<=0;
+            prefetch_valid<=0;prefetch_word<=0;prefetch_class<=0;
             branch_displacement<=0;branch_backwards<=0;
             state <= RESET_VECTOR;
         end else begin
@@ -371,7 +383,7 @@ module unsp_cpu (
                     end else begin
                         instruction_pc<= {r[6][5:0],r[7]};
                         if (prefetch_valid) begin
-                            prefetch_valid<=0;decode_fetched(prefetch_word);
+                            prefetch_valid<=0;decode_fetched(prefetch_word,prefetch_class);
                         end else read_word(pc, FETCHED);
                     end
                 end else if (prefetch_enable && !prefetch_valid && (pc<22'h2800 || pc>=22'h4000))
@@ -380,7 +392,7 @@ module unsp_cpu (
                 state[$clog2(WAIT_BUS)]: if (bus_ack) begin
                     data_word<=bus_rdata; bus_valid <= 0;
                     if (resume_state[$clog2(FETCHED)]) begin
-                        decode_fetched(bus_rdata);
+                        decode_fetched(bus_rdata,classify_fetched(bus_rdata));
                     end else if (resume_state[$clog2(PREFETCH_DONE)]) begin
                         finish_prefetch(bus_rdata);
                     end else if (resume_state[$clog2(MEMORY_ALU)]) begin

@@ -534,3 +534,34 @@ ROM latency and clock rates are retained. Both original ROMs matched ten frames
 of CPU, banking, video and stereo execution at the production clock with the
 interrupt-order assertions enabled. The full affected-scene checks and all
 release qualification gates remain pending.
+
+## Hair Salon deadline confirmation and next timing paths
+
+Source `722ee41` completed the entire 1,800-frame Hair Salon production-output
+comparison. CPU, banking, every pixel and every stereo pair matched reference;
+no output FIFO faults or processing overflow occurred. Maximum modeled backlog
+was 70,709 cycles (2.619 ms), below the 131,071-cycle limit and 256-sample audio
+startup reserve. This confirms the original simulated failure is removed for
+that scene. Physical audio still needs confirmation. The other original and
+music-scene comparisons continue in the frozen scheduler workspace.
+
+The controls-only PSRAM candidate failed slow setup at -0.494/-0.242 ns. The
+previous PSRAM payload paths are absent from the worst paths. Remaining failures
+include cached opcode bit 11 through fast-form classification into branch-state
+enables, and a graphics request through the shared-bus grant/address mux.
+
+The next combined source captures the four fast instruction classes with the
+prefetched opcode, using live status flags for branch decisions as before.
+Uncached and immediate prefetch completion still classify their current input
+word directly. An assertion checks that the stored class matches its opcode.
+The shared arbiter captures a new grant's address directly and holds its payload
+throughout the transaction, leaving the RAM lookahead address and handshake
+latency unchanged. A held-owner assertion checks the captured bus address.
+
+Focused checks passed all 184,035 CPU cases, including idle/early prefetch and
+interrupt handling, with unchanged 778/845-clock continuous streams. Both
+4,096-instruction boot traces passed. Shared RAM/MMIO/ROM and owner-handoff
+checks passed, retaining two-clock RAM and five-clock MMIO budgets. Both
+originals also matched ten production-clock full-system frames. This source
+requires fresh full scene/library validation and physical timing; existing
+changed-source system receipts are not reused.

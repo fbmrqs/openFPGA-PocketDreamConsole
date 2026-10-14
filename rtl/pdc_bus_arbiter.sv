@@ -25,7 +25,7 @@ module pdc_bus_arbiter #(
     wire [CLIENTS-1:0] grant;
     wire [CLIENTS-1:0] priority_match [0:CLIENTS-1];
     logic selected_write;
-    logic [ADDRESS_WIDTH-1:0] selected_address;
+    logic [ADDRESS_WIDTH-1:0] selected_address, granted_address;
     logic [15:0] selected_data;
     function automatic logic [CLIENTS-1:0] preceding(input integer start, client);
         preceding='0;
@@ -40,6 +40,7 @@ module pdc_bus_arbiter #(
         if (!reset && busy)
             for (int input_client=0;input_client<CLIENTS;input_client++)
                 if (held_grant[input_client] && (selected_address!=address[input_client*ADDRESS_WIDTH +: ADDRESS_WIDTH] ||
+                    memory_address!=selected_address ||
                     memory_lookahead_address!=selected_address))
                     $fatal(1,"Local bus address differs from the held owner payload");
 `endif
@@ -54,10 +55,11 @@ module pdc_bus_arbiter #(
         end
     endgenerate
     always_comb begin
-        selected='0;selected_write=0;selected_data='0;selected_address='0;
+        selected='0;selected_write=0;selected_data='0;selected_address='0;granted_address='0;
         for (int client=0;client<CLIENTS;client++) begin
             selected|=INDEX_WIDTH'(client) & {INDEX_WIDTH{grant[client]}};
             selected_address|=address[client*ADDRESS_WIDTH +: ADDRESS_WIDTH] & {ADDRESS_WIDTH{active_grant[client]}};
+            granted_address|=address[client*ADDRESS_WIDTH +: ADDRESS_WIDTH] & {ADDRESS_WIDTH{grant[client]}};
             selected_write|=write[client] && active_grant[client];
             selected_data|=write_data[client*16 +: 16] & {16{active_grant[client]}};
         end
@@ -71,7 +73,10 @@ module pdc_bus_arbiter #(
             owner <= 0; next_owner <= 0; busy <= 0; turnaround <= 0;held_grant<='0;response_data<=0;
             memory_write<=0;memory_address<=0;memory_write_data<=0;
         end else begin
-            memory_write<=selected_write;memory_address<=selected_address;memory_write_data<=selected_data;
+            // Capture the new grant directly; hold its payload throughout the transaction.
+            if (!busy && !turnaround) begin
+                memory_write<=selected_write;memory_address<=granted_address;memory_write_data<=selected_data;
+            end
             if (busy) begin
             if (memory_ack) begin
                 response_ack[owner]<=1;response_data<=memory_read_data;
