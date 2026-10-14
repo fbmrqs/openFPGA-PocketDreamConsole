@@ -673,3 +673,31 @@ Fresh full-system/library comparisons
 and physical timing remain mandatory. The next collector defers queued tests
 if its compiler fails while allowing already-active independent tests to finish;
 deferred tests are never recorded as passing or used to qualify a package.
+
+Source `67cc7a9` failed slow setup at -0.443/-0.127 ns. Its reported worst
+paths run from framebuffer read pulses through the PSRAM state-case controls
+into byte enables, ADV and DQ output enable. The earlier CPU address path is
+absent from those worst paths. Fast setup and all hold/recovery/removal checks
+passed. No failed bitstream was packaged or installed.
+
+That source also failed the full Hair Salon production-output comparison at
+frame 1,025 with modeled-cycle overflow and display backlog. Every CPU, banking,
+pixel and stereo comparison matched until the failure. The registered sound
+eligibility introduced extra waiting clocks, despite unchanged arithmetic and
+passing unit budgets. Bunny Pinky and Beeline 2 passed; the remaining independent
+run continues. The added eligibility wait is removed in the next candidate,
+restoring the earlier parallel selector's cycle behavior. Its one-hot position
+register gets a local fanout limit instead of a new processing stage. The CPU
+stack/address correction remains, with no added CPU clock.
+
+PSRAM ADV, byte-enable and DQ-enable updates now use independent marker-controlled
+processes, preserving the exact idle/request/write/read events and avoiding the
+unrelated case priority. Focused pin checks passed all 512 transactions with
+unchanged 15/14-clock read/write timing. Both sound address modes matched
+251,851 stereo samples and 288,000 register/IRQ snapshots each with unchanged
+59/8-clock budgets; both originals matched ten production frames after removing
+the sound wait. The next frozen collector runs Hair Salon
+first alongside Pink, then the other required scenes and profiles. It defers
+queued tests on any required failure while retaining active independent checks.
+The frame-1,025 failure remains the full-system regression gate; unit checks do
+not establish that it is removed, and full-device timing remains mandatory.
