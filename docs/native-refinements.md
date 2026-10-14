@@ -427,3 +427,22 @@ top-level button wiring. Component/package policy checks and FPGA compilation
 are rerun. Timing and installation must pass for the new binary before the
 legacy card entries are retired. The musical lead distortion remains open;
 no sound behavior is changed in this controls/packaging update.
+
+## Musical lead reproduction routes
+
+PDC30's categories form a 3×2 grid; Puzzle is selected after startup. Fabio's
+routes are Puzzle → confirm → Down → confirm for Hair Salon; Right → confirm
+→ Down five times → confirm for Bunny Pinky; Down → confirm → Down → confirm
+for Beeline 2; and Down → confirm → Down twice → confirm for Fun Match 2.
+
+`make audio-replay` builds a headless reference capture tool. Run
+`build/pdc-audio-replay pdc_pink.u2 hair-salon output.wav output.csv`; the other
+scene keys are `bunny-pinky`, `beeline-2` and `fun-match-2`. It records a
+48 kHz stereo WAV and per-frame channel waveform/phase/target/pitch-control
+state, without a window or screenshots. The scripted route waits until frame
+560 for category movement, confirms at 620, selects list items starting at 700
+with 20-frame spacing, and confirms at 840 and 1000. Each press lasts two frames.
+It captures frames 820–1599. Actual scene identity and whether the reference
+reproduces the reported pitch-bend distortion still need listening confirmation.
+Reference clips and state traces are private, generated files under
+`build/research/music-voice/`; they remain Git-ignored. No sound fix is claimed.

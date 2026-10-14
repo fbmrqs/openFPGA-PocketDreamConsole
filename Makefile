@@ -73,3 +73,10 @@ rtl-clock-test:
 rtl-pocket-test:
 	bash tools/fpga/pocket-system-test.sh pdc_pink.u2 1800
 	bash tools/fpga/pocket-system-test.sh pdc100.bin 1800
+
+.PHONY: audio-replay
+audio-replay: build/pdc-audio-replay
+
+build/pdc-audio-replay: tools/audio-replay.cpp src/audio.h $(ENGINE)
+	mkdir -p build
+	c++ -std=c++20 -O3 -fno-strict-aliasing -Ithird_party/veesem -Isrc tools/audio-replay.cpp $(ENGINE) -o $@
