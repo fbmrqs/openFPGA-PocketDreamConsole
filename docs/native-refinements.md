@@ -460,4 +460,18 @@ with Pocket output clock crossings and ROM-transfer latency. It checks the
 processing deadline, FIFO starvation and every resampled stereo pair against
 the reference, as well as CPU, banking and video. Its private status and log
 are `build/research/music-voice/replay-status.json` and `system-replay.log`.
-It has not yet reached the affected scene; no cause or sound fix is confirmed.
+That replay subsequently failed at frame 887 with a modeled-cycle budget
+overflow, after the Hair Salon selection. CPU, banking, pixels and stereo
+samples matched the reference up to the failure. Display backpressure accounted
+for 17,898 blocked clocks over more than 1.45 billion elapsed clocks; this is
+not yet enough evidence to identify the overloaded component. The WAV was not
+written because the replay exited at the failure.
+
+A private profiler removes output/reference checking while retaining the same
+machine, production clock, ROM latency and button route. It counts scheduler,
+peripheral and ROM waits, and saves a Verilator checkpoint at frame 870 for
+short repeat measurements. Its active process, source hashes, log and restore
+command are recorded under `profile` in `replay-status.json`. This reduced
+reproduction must fail independently and its restored state must reproduce the
+same failure before drawing performance conclusions. It supplies no release
+validation evidence, and no sound fix is confirmed.
