@@ -94,10 +94,6 @@ module pdc_spu #(parameter logic ADDRESS_LOOKAHEAD = 0) (
         ADPCM_CLAMP = 39'd1 << 9,
         WAVE_ADVANCE = 39'd1 << 10,
         MIX = 39'd1 << 11,
-        MIX_PRODUCT = 39'd1 << 12,
-        BLEND = 39'd1 << 13,
-        ENVELOPE_SCALE = 39'd1 << 14,
-        PAN_SCALE = 39'd1 << 15,
         OUTPUT_SCALE = 39'd1 << 17,
         OUTPUT_OFFSET = 39'd1 << 18,
         GAIN_INPUT = 39'd1 << 19,
@@ -180,7 +176,11 @@ module pdc_spu #(parameter logic ADDRESS_LOOKAHEAD = 0) (
     logic [11:0] pitch_step;
     logic pitch_down;
     logic signed [20:0] pitch_candidate;
-    logic [13:0] left_gain, right_gain;
+    logic [3:0] mix_valid;
+    logic [18:0] product_phase;
+    logic [6:0] amplitude_blend, amplitude_scale;
+    logic [13:0] left_gain [0:2], right_gain [0:2];
+    logic signed [15:0] scaled_sample;
     logic signed [30:0] left_product, right_product;
     logic signed [15:0] mixed_sample;
     integer i,j,index,code,sample,pan_left,pan_right,amount;
@@ -423,6 +423,8 @@ module pdc_spu #(parameter logic ADDRESS_LOOKAHEAD = 0) (
             envelope_source<=0;envelope_step<=0;envelope_target<=0;envelope_down<=0;envelope_candidate<=0;
             envelope_target_reached<=0;envelope_shutdown<=0;
             pitch_start<=0;pitch_target<=0;pitch_step<=0;pitch_down<=0;pitch_candidate<=0;
+            mix_valid<=0;product_phase<=0;amplitude_blend<=0;amplitude_scale<=0;scaled_sample<=0;
+            for (int stage=0;stage<3;stage++) begin left_gain[stage]<=0;right_gain[stage]<=0;end
             mix_previous<=0;mix_current<=0;mix_phase<=0;mix_previous_weight<=0;mix_amplitude<=0;mix_pan<=0;mix_volume<=0;
             for (i=0;i<16;i=i+1) begin
                 for (j=0;j<12;j=j+1) c[i][j] <= 0;
@@ -444,6 +446,32 @@ module pdc_spu #(parameter logic ADDRESS_LOOKAHEAD = 0) (
             previous_adpcm<=0;previous_adpcm_index<=0;adpcm_sum<=0;
             adpcm_index_step<=0;next_adpcm_index<=0;ramp_active<=0;
         end else begin
+            // Overlap mixing with the next channel's phase and waveform work.
+            mix_valid <= {mix_valid[2:0],state[$clog2(MIX)] && !register_write};
+            if (mix_valid[0]) begin
+                previous_product<=36'(mix_previous)*36'(mix_previous_weight);
+                current_product<=36'(mix_current)*36'(product_phase);
+                amplitude_blend<=mix_amplitude;
+                pan_left = mix_pan<=64 ? 127 : int'(7'(8'd0-{mix_pan,1'b0}));
+                pan_right = mix_pan>=64 ? 127 : int'({mix_pan[5:0],1'b0});
+                left_gain[0]<=14'(pan_left*int'(mix_volume));
+                right_gain[0]<=14'(pan_right*int'(mix_volume));
+            end
+            if (mix_valid[1]) begin
+                mixed_sample <= 16'(int'(previous_product[34:19])+int'(current_product[34:19])-32768);
+                amplitude_scale<=amplitude_blend;
+                left_gain[1]<=left_gain[0];right_gain[1]<=right_gain[0];
+            end
+            if (mix_valid[2]) begin
+                scaled_sample <= 16'((23'(mixed_sample)*$signed({1'b0,amplitude_scale})) >>> 7);
+                left_gain[2]<=left_gain[1];right_gain[2]<=right_gain[1];
+            end
+            if (mix_valid[3]) begin
+                left_product=31'(scaled_sample)*$signed({1'b0,left_gain[2]});
+                right_product=31'(scaled_sample)*$signed({1'b0,right_gain[2]});
+                left_mix=left_mix+32'(left_product>>>14);
+                right_mix=right_mix+32'(right_product>>>14);
+            end
             for (int voice=0;voice<16;voice++) pitch_changed[voice]<=phase[voice]!=target_phase[voice];
             if (state[$clog2(IDLE)]) begin
                 for (int scan=0;scan<16;scan++) begin
@@ -542,7 +570,7 @@ module pdc_spu #(parameter logic ADDRESS_LOOKAHEAD = 0) (
                 end
                 state[$clog2(CHANNEL)]: begin
                     if (channel_position[0]) begin left_mix=0;right_mix=0;end
-                    if (channel_position[16]) state<= OUTPUT_SCALE;
+                    if (channel_position[16]) begin if (mix_valid==0) state<= OUTPUT_SCALE; end
                     else if (!current_channel_enabled) skip_disabled_channels();
                     else begin
                         next_phase <= {1'b0,phase_acc[channel[3:0]]}+{1'b0,phase[channel[3:0]]};
@@ -611,35 +639,10 @@ module pdc_spu #(parameter logic ADDRESS_LOOKAHEAD = 0) (
                 end
                 state[$clog2(MIX)]: begin
                     index = int'(channel[3:0]);
-                    mix_previous<=c[index][9];mix_current<=c[index][11];
+                    mix_previous<=c[index][9];mix_current<=c[index][11];product_phase<=mix_phase;
                     mix_previous_weight<=20'h80000-{1'b0,mix_phase};
                     mix_amplitude<=c[index][5][6:0];mix_pan<=c[index][3][14:8];mix_volume<=c[index][3][6:0];
-                    state<=MIX_PRODUCT;
-                end
-                state[$clog2(MIX_PRODUCT)]: begin
-                    previous_product<=36'(mix_previous)*36'(mix_previous_weight);
-                    current_product<=36'(mix_current)*36'(mix_phase);
-                    state<=BLEND;
-                end
-                state[$clog2(BLEND)]: begin
-                    mixed_sample = 16'(int'(previous_product[34:19])+int'(current_product[34:19])-32768);
-                    state<=ENVELOPE_SCALE;
-                end
-                state[$clog2(ENVELOPE_SCALE)]: begin
-                    index=int'(channel[3:0]);
-                    mixed_sample = 16'((23'(mixed_sample)*$signed({1'b0,mix_amplitude})) >>> 7);
-                    pan_left = mix_pan<=64 ? 127 : int'(7'(8'd0-{mix_pan,1'b0}));
-                    pan_right = mix_pan>=64 ? 127 : int'({mix_pan[5:0],1'b0});
-                    left_gain=14'(pan_left*int'(mix_volume));
-                    right_gain=14'(pan_right*int'(mix_volume));
-                    state<=PAN_SCALE;
-                end
-                state[$clog2(PAN_SCALE)]: begin
-                    left_product=31'(mixed_sample)*$signed({1'b0,left_gain});
-                    right_product=31'(mixed_sample)*$signed({1'b0,right_gain});
-                    left_mix = left_mix+32'(left_product>>>14);
-                    right_mix = right_mix+32'(right_product>>>14);
-                    advance_channel(); state<= CHANNEL;
+                    advance_channel();state<=CHANNEL;
                 end
                 state[$clog2(OUTPUT_SCALE)]: begin
                     scaled_left = left_mix >>> (4-int'(g[13][7:6])); scaled_right = right_mix >>> (4-int'(g[13][7:6]));

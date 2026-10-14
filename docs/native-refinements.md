@@ -485,3 +485,35 @@ enables one clock ahead, retaining the existing pin-level address/data capture
 cycles. Explicit cycle-marker equivalence assertions and 512 reads/writes on
 both dies passed, including pin skew, setup, hold and pulse checks; read/write
 costs remain 15/14 clocks. Full physical timing still must pass.
+
+## Mixer throughput candidate
+
+The reduced Hair Salon reproduction and its restored frame-870 checkpoint
+both overflowed at frame 887, clock 1,453,267,855. At the final measured frame,
+graphics cost about 747,950 clocks per frame; sound work rose from roughly
+42,776 to 164,800 clocks when the three ADPCM music channels started. The
+existing render workload left insufficient room for that increase.
+
+Removing sprite rendering or ROM miss latency independently avoided overflow
+through frame 920. Changing the graphics cache index did not help. An early
+instruction-start probe initially violated interrupt-snapshot ordering; adding
+the necessary snapshot check delayed overflow to frame 913 but did not solve
+it. Neither cache nor instruction scheduling is changed in the candidate.
+
+Sound now advances the next channel after capturing its mixing operands while
+four valid-tagged arithmetic stages finish interpolation, amplitude, pan and
+accumulation. Phase, amplitude and gains travel with their corresponding
+sample. The channel loop drains all pending products before output scaling,
+preserving channel order and the original truncation points. The dense mixing
+budget regression failed at 119 clocks before this change and passes at 59
+clocks, below its 65-clock budget. Both register-address configurations matched
+251,851 stereo samples and 288,000 register/IRQ snapshots each; silent updates
+remain eight clocks.
+
+The production-output differential now accepts the four exact scene names as
+its fifth argument. For example,
+`bash tools/fpga/pocket-system-test.sh pdc_pink.u2 1800 hair-salon` checks the
+actual scene against reference audio, CPU, video, backlog and output FIFOs.
+Each scene gets separate source-bound evidence. Full scene/library checks,
+physical timing and device listening confirmation remain required. The
+controls/PSRAM build is independent and contains no mixer change.

@@ -20,7 +20,15 @@
 int main(int argc,char** argv) {
     if (argc<3 || argc>5) return 2;
     const bool videojet=argc==5 && std::strcmp(argv[4],"videojet")==0;
-    if(argc==5 && !videojet)return 2;
+    unsigned category=0,position=0;
+    const bool music_scene=argc==5 && !videojet;
+    if(music_scene) {
+        if(!std::strcmp(argv[4],"hair-salon"))position=1;
+        else if(!std::strcmp(argv[4],"bunny-pinky")){category=Pdc::Right;position=5;}
+        else if(!std::strcmp(argv[4],"beeline-2")){category=Pdc::Down;position=1;}
+        else if(!std::strcmp(argv[4],"fun-match-2")){category=Pdc::Down;position=2;}
+        else return 2;
+    }
     const bool paced=argc>=4 && std::strcmp(argv[3],"paced")==0;
     const bool native_latency=paced || (argc>=4 && std::strcmp(argv[3],"native-latency")==0);
     const unsigned limit=unsigned(std::strtoul(argv[2],nullptr,10));
@@ -44,6 +52,13 @@ int main(int argc,char** argv) {
     bool pending=false;unsigned delay=0;uint32_t address=0;
     uint32_t line_tag=~0u;uint64_t rom_reads=0,bursts=0,frame_start=0,max_frame_clocks=0;
     auto buttons=[&](unsigned frame) {
+        if(music_scene) {
+            if(frame==560 || frame==561)return category;
+            if(frame==620 || frame==621 || frame==840 || frame==841 || frame==1000 || frame==1001)return unsigned(Pdc::A);
+            for(unsigned item=0;item<position;item++)
+                if(frame==700+item*20 || frame==701+item*20)return unsigned(Pdc::Down);
+            return 0u;
+        }
         if (frame==620 || frame==621 || frame==800 || frame==801) return unsigned(Pdc::A);
         if (frame>=900 && frame<960) return unsigned(Pdc::Right);
         if (frame>=1050 && frame<1110) return unsigned(Pdc::A);

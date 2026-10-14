@@ -54,8 +54,8 @@ int main() {
     if(actual.size()!=chord.size())return 1;
     for(size_t n=0;n<actual.size();n++)if(actual[n]!=chord[n])return 1;
     if(dut.busy)return 1;
-    if(chord_clocks>125)std::fprintf(stderr,"Performance note: dense sound update costs %u clocks (target 125)\n",chord_clocks);
-    std::printf("Dense sound update: %u clocks (budget 125)\n",chord_clocks);
+    if(chord_clocks>65){std::fprintf(stderr,"Dense sound update exceeds processing budget: %u clocks, budget 65\n",chord_clocks);return 1;}
+    std::printf("Dense sound update: %u clocks (budget 65)\n",chord_clocks);
     unsigned compared=0;
     for (unsigned fixture=0;fixture<72;fixture++) {
         reference.Reset();pending=false;dut.reset=1;tick();dut.reset=0;
