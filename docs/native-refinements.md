@@ -475,3 +475,13 @@ command are recorded under `profile` in `replay-status.json`. This reduced
 reproduction must fail independently and its restored state must reproduce the
 same failure before drawing performance conclusions. It supplies no release
 validation evidence, and no sound fix is confirmed.
+
+The official controls/filter candidate completed compilation but failed the two
+slow setup corners at -0.274 ns and -0.188 ns. All other audited categories
+passed. The ten worst 85°C paths ran from PSRAM0 cycle-marker bits through the
+write/address payload enable mux to the data-pin registers. No candidate was
+installed. The next timing correction prepares replicated, local payload
+enables one clock ahead, retaining the existing pin-level address/data capture
+cycles. Explicit cycle-marker equivalence assertions and 512 reads/writes on
+both dies passed, including pin skew, setup, hold and pulse checks; read/write
+costs remain 15/14 clocks. Full physical timing still must pass.

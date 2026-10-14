@@ -240,6 +240,24 @@ module psram #(
 
   reg [15:0] latched_data_in;
 
+  // Prepare local enables one clock ahead; the I/O payload keeps its cycle timing.
+  (* preserve, dont_merge, dont_retime, maxfan = 4 *) reg [3:0] address_capture = 4'hf;
+  (* preserve, dont_merge, dont_retime, maxfan = 4 *) reg [3:0] write_capture = 4'h0;
+  always @(posedge clk) begin
+    address_capture <= {4{(state[STATE_NONE] && !write_en && !read_en) ||
+                          state[STATE_WRITE_HOLD_END] || state[STATE_READ_DATA_RECEIVED]}};
+    write_capture <= {4{state[STATE_WRITE_DATA_START-1]}};
+    for (integer group_index = 0; group_index < 4; group_index = group_index + 1) begin
+      if (address_capture[group_index]) cram_data[group_index*4 +:4] <= addr[group_index*4 +:4];
+      else if (write_capture[group_index]) cram_data[group_index*4 +:4] <= latched_data_in[group_index*4 +:4];
+    end
+  end
+`ifdef PDC_VERIFY_MMIO_CYCLES
+  always @(posedge clk)
+    if (address_capture != {4{state[STATE_NONE]}} || write_capture != {4{state[STATE_WRITE_DATA_START]}})
+      $fatal(1,"Prepared PSRAM payload enable differs from its cycle marker");
+`endif
+
   assign cram_dq = data_out_en ? cram_data : 16'hZZ;
 
   always @(posedge clk) begin
@@ -259,7 +277,6 @@ module psram #(
       state[STATE_NONE]: begin
         read_avail <= 0;
         cram_a <= addr[21:16];
-        cram_data <= addr[15:0];
 
         cram_clk   <= 0;
         cram_adv_n <= 1;
@@ -326,7 +343,6 @@ module psram #(
       state[STATE_WRITE_DATA_START]: begin
         // Provide data to write
         data_out_en <= 1;
-        cram_data   <= latched_data_in;
       end
       state[STATE_WRITE_DATA_END]: begin
         // Unlatch write enable and banks

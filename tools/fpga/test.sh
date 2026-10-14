@@ -153,7 +153,7 @@ verilator --cc --exe --build -j 8 -MAKEFLAGS 'OPT_FAST=-O3' --top-module pocket_
   tests/rtl/pocket_sdram_tb.sv "$PWD/tests/rtl/pocket_sdram.cpp" > build/rtl/pocket-sdram-slow-build.log 2>&1
 for access_ticks in 10 16 22; do build/rtl/pocket-sdram-slow/Vpocket_sdram_tb "$access_ticks" 80; done
 verilator --cc --exe --build -j 8 -MAKEFLAGS 'OPT_FAST=-O3' --top-module pocket_psram_tb \
-  -Wno-WIDTH -Wno-REALCVT -Wno-UNUSEDSIGNAL --Mdir build/rtl/pocket-psram \
+  +define+PDC_VERIFY_MMIO_CYCLES -Wno-WIDTH -Wno-REALCVT -Wno-UNUSEDSIGNAL --Mdir build/rtl/pocket-psram \
   -CFLAGS '-std=c++20 -O2' \
   third_party/pocket/psram.sv tests/rtl/pocket_psram_tb.sv "$PWD/tests/rtl/pocket_psram.cpp" \
   > build/rtl/pocket-psram-build.log 2>&1
