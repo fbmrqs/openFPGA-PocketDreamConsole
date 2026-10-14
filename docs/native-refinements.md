@@ -396,3 +396,18 @@ The original hardware-confirmed `PocketDreamConsoleFPGATest` core is unchanged.
 No ejection was performed. The readiness window alert was already displayed.
 Hardware testing of the new entries, black startup, display filters, sprite
 priority, gameplay and sound is still pending; save states remain unimplemented.
+
+## Device confirmation — 14 October 2026
+
+Fabio confirmed black startup, corrected Pot Pit layering, all filters in both
+entries, and full-speed gameplay in PDC30 Pink, PDC50, PDC100, TMNT and
+VideoJet TV Games 1–4, with no observed slowdown or graphics issues. The
+confirmed bitstream comes from source commit `9c79abd`; this is the preserved
+pre-control-swap hardware milestone.
+
+Remaining reports: A/B need swapping globally at the Pocket input boundary.
+PDC30 Pink has distortion in the main musical voice, resembling incorrect
+pitch bending, throughout Hair Salon (Puzzle), Bunny Pinky (Action),
+Beeline 2 and Fun Match 2 (Table), including outside gameplay. Spoken voice
+and sound effects seem fine. A specific audio reproduction and fix are pending.
+Save states remain a later, unimplemented feature.
