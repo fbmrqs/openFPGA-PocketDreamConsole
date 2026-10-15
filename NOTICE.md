@@ -36,6 +36,13 @@ hardware/software; no endorsement or affiliation is implied. The public package
 omits the previous runtime's author icon and platform image rather than presenting
 them as this project's identity. Optional new artwork needs its own provenance.
 
+The README banner, `docs/assets/handheld-banner.png`, is the supplied v4 render
+from the local `isometric-handheld` artwork project. Its `build_model.py` builds
+editable handheld geometry and seven grayscale materials in Blender, using an
+orthographic camera, flat Workbench shading and no antialiasing. The 521 × 165
+render is enlarged exactly 3× with nearest-neighbor pixels to 1563 × 495. The
+script loads no external textures or models; the illustration has a blank screen.
+
 Development used OpenAI Codex; upstream attribution and licenses remain intact.
 Hardware confirmation is user-reported testing, not certification by Analogue,
 Conny, VideoJet, Anncia, or game rights holders.

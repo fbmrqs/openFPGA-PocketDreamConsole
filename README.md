@@ -1,5 +1,7 @@
 # Pocket Dream Console for Analogue Pocket
 
+![Isometric grayscale Pocket Dream Console handheld](docs/assets/handheld-banner.png)
+
 A native openFPGA core for Pocket Dream Console and VideoJet TV Games hardware.
 The μnSP CPU, SPG200 graphics, sound and board peripherals run in the FPGA.
 No software-emulation runtime or external BIOS is required.
