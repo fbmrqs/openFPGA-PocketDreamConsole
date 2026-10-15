@@ -729,3 +729,29 @@ frozen source and matched. Beeline 2/Fun Match 2 maximum backlogs were
 Fresh extra-ROM checks have passed PDC50 and Oui-Oui so far; remaining profiles
 are still running. No prior revision's results are used for this qualification,
 and no card installation or physical music confirmation has occurred yet.
+
+## Official card installation, 15 October 2026
+
+All eight extra profiles passed fresh CRC/readback and 1,800-frame
+production-output checks on `3d287a2`, including Oui-Oui and Dora. The qualified
+package and package tests passed, and the official `Local.PocketDreamConsole`
+entry was installed onto card UUID `<private-device-id>`.
+An independent post-install check matched all 40 release-manifest file hashes
+and the on-card manifest itself, rechecked the mounted card identity and flushed
+writes without ejecting. The installed reversed bitstream hash is
+`bdb979ce0c531a9c15ed3ad09c37243a09a8739bce585c5f73b8dc791d52e98f`.
+
+The single official entry contains ten ROM profiles, the global physical A/B
+swap and sixteen selected filters including GG/GG+. Old software and FPGA
+test/Extra entries were retired after verified off-card backup under
+`build/native-pin-control-workspace/build/card-core-backups/1792036701033821000`.
+The previously hardware-confirmed library bitstream was independently found
+intact in that backup. Shared ROM assets, Unsupported dumps and unrelated cores
+were preserved. The readiness window is displayed; its waiting acknowledgment
+keeps the supervisor's aggregate status at packaging until the dialog closes.
+`card-install-verification.json` records the completed independent verification.
+
+The hourly follow-up can now pause after reporting installation. A/B, filters,
+the four music scenes and the newly qualified Oui-Oui/Dora profiles still need
+physical confirmation. Installation and simulated matching do not establish
+that the reported audible wobble is resolved.
