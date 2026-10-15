@@ -701,3 +701,11 @@ first alongside Pink, then the other required scenes and profiles. It defers
 queued tests on any required failure while retaining active independent checks.
 The frame-1,025 failure remains the full-system regression gate; unit checks do
 not establish that it is removed, and full-device timing remains mandatory.
+
+Source `3d287a2` completed Hair Salon's full 1,800-frame production-output
+regression: 174,005,112 instructions and 2,946,384,587 FPGA clocks matched CPU,
+banking, pixels and stereo reference output without FIFO/deadline failure.
+Maximum modeled backlog returned to 70,709 cycles, matching the earlier passing
+scene. Pink's original full run also passed. This confirms the frame-1,025
+simulation regression is removed after restoring selector latency; physical
+audio, remaining scene/library qualification and device timing are still pending.
