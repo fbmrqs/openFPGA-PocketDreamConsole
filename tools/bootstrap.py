@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Fetch the exact SDK revision used by this experimental Pocket build."""
+"""Fetch pinned native framework or historical software SDK dependencies."""
+import argparse
 from pathlib import Path
 import subprocess
 
@@ -14,6 +15,25 @@ def git(*args):
 
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--native', action='store_true', help='Fetch only the native Analogue core template.')
+    args = parser.parse_args()
+    if args.native:
+        destination = ROOT / '.deps/core-template'
+        revision = 'da3a021b1eaf742604d86d8dc9b33a6666263e6a'
+        if not destination.exists():
+            destination.mkdir(parents=True)
+            subprocess.run(['git', 'init', str(destination)], check=True)
+            subprocess.run(['git', '-C', str(destination), 'fetch', '--depth=1',
+                            'https://github.com/open-fpga/core-template.git', revision], check=True)
+            subprocess.run(['git', '-C', str(destination), 'checkout', '--detach', 'FETCH_HEAD'], check=True)
+        actual = subprocess.check_output(['git', '-C', str(destination), 'rev-parse', 'HEAD'], text=True).strip()
+        dirty = subprocess.check_output(['git', '-C', str(destination), 'status', '--porcelain',
+                                         '--untracked-files=no'], text=True).strip()
+        if actual != revision or dirty:
+            raise SystemExit('Native framework differs from the pinned clean revision; preserve it and use a separate .deps directory.')
+        print(f'Native framework ready: {revision}. Install Quartus separately; see docs/building.md.')
+        return
     if SDK.exists():
         if git("rev-parse", "HEAD") != REVISION:
             raise SystemExit("SDK revision differs; keep the checkout and use a separate .deps directory.")

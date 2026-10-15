@@ -15,3 +15,14 @@ __pycache__/
 *.sof
 *.zip
 *.run
+*.wav
+*.mp3
+*.flac
+*.7z
+*.rar
+*.vcd
+*.fst
+.env
+.env.*
+*.pem
+*.key

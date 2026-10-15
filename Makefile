@@ -1,4 +1,4 @@
-.DEFAULT_GOAL := all
+.DEFAULT_GOAL := help
 
 SDK_ROOT := .deps/openfpga-sdk
 SDK_DIR := $(SDK_ROOT)/src/sdk
@@ -9,13 +9,29 @@ CXXFLAGS := -std=c++20 -O3 -flto -D_DEFAULT_SOURCE -fno-strict-aliasing -Wno-unu
 LDFLAGS := -O3 -flto
 SRCS_CXX := src/main.cpp src/pdc.cpp $(wildcard third_party/veesem/core/spg200/*.cpp) $(SDK_DIR)/of_cxxabi.cpp
 
+# Only the retired software target needs the RISC-V SDK.
+ifneq ($(filter software package setup,$(MAKECMDGOALS)),)
 include $(SDK_DIR)/sdk.mk
+endif
 
 ENGINE := src/pdc.cpp $(wildcard third_party/veesem/core/spg200/*.cpp)
 HEADERS := $(wildcard src/*.h third_party/veesem/core/*.h third_party/veesem/core/spg200/*.h)
 
-.PHONY: all headless trace check package setup
-all: $(BUILD_DIR)/app.elf
+.PHONY: all software headless trace check package setup help check-release
+all: fpga
+software: $(BUILD_DIR)/app.elf
+
+help:
+	@echo 'Native core: make fpga, rtl-test, rtl-pocket-test, rtl-clock-test'
+	@echo 'ROM-free host checks: make check-release'
+	@echo 'Public packaging: python3 tools/release.py --workspace <qualified-workspace>'
+	@echo 'Reference tools: make headless, trace, audio-replay'
+	@echo 'Retired software target: make software (requires openfpgaSDK)'
+
+check-release:
+	python3 -m unittest discover -s tests -p test_release.py
+	python3 -m unittest discover -s tests -p native_validation.py
+	python3 tools/check_repository.py
 
 $(APP_CXX_OBJS): $(HEADERS) Makefile
 
@@ -41,7 +57,7 @@ check: headless build/test-audio
 	./build/pdc-headless pdc_pink.u2 1800
 	./build/pdc-headless pdc100.bin 1800
 
-package: all
+package: software
 	python3 tools/package.py
 
 setup:

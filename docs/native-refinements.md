@@ -1,3 +1,8 @@
+> Historical development record. For current installation and compatibility, see
+> [the README](../README.md); for maintained build instructions, see
+> [building.md](building.md). Dated failures and pending statuses below describe
+> their recorded revisions and are superseded by later confirmations.
+
 # Display, sprite priority and compatibility follow-up
 
 The recovery baseline is commit `8338dc7`, tag

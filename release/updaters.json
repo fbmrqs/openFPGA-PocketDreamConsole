@@ -1,0 +1,10 @@
+{
+  "previous": [
+    {"author": "Local", "shortname": "PocketDreamConsole", "platform_id": "pdc"},
+    {"author": "Local", "shortname": "PocketDreamConsoleFPGATest", "platform_id": "pdc"},
+    {"author": "Local", "shortname": "PocketDreamConsoleFPGATestExtra", "platform_id": "pdc"},
+    {"author": "Local", "shortname": "PocketDreamLibraryTest", "platform_id": "pdc"},
+    {"author": "Local", "shortname": "PocketDreamLibraryTestExtra", "platform_id": "pdc"}
+  ],
+  "declare_ai": ["OpenAI Codex"]
+}

@@ -1,0 +1,11 @@
+{
+  "repository": "fbmrqs/openFPGA-PocketDreamConsole",
+  "author": "fbmrqs",
+  "shortname": "PocketDreamConsole",
+  "version": "0.3.0",
+  "date_release": "2026-10-15",
+  "hardware_source_commit": "3d287a21d1636944c6d9e1bcea4822d856a92670",
+  "hardware_confirmed_date": "2026-10-15",
+  "bitstream_sha256": "bdb979ce0c531a9c15ed3ad09c37243a09a8739bce585c5f73b8dc791d52e98f",
+  "raw_rbf_sha256": "b7bff553bf58d7c615f8aa4c18fe6d0905c4c257d72debcb0a31657968eaa361"
+}

@@ -1,3 +1,8 @@
+> Historical development record. For current installation and compatibility, see
+> [the README](../README.md); for maintained build instructions, see
+> [building.md](building.md). Dated failures and pending statuses below describe
+> their recorded revisions and are superseded by later confirmations.
+
 # Native FPGA hardware milestone — 12 October 2026
 
 Fabio confirms that the installed native core runs games at full speed with

@@ -1,0 +1,30 @@
+name: Core problem
+description: Report a reproducible gameplay, audio, display or installation issue.
+body:
+  - type: input
+    id: release
+    attributes:
+      label: Core release and Pocket firmware
+    validations:
+      required: true
+  - type: input
+    id: profile
+    attributes:
+      label: ROM profile and SHA-1
+      description: Identify the dump without uploading it or linking a download.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps, expected behavior and actual behavior
+      description: Include the category/game and directional presses from startup.
+    validations:
+      required: true
+  - type: checkboxes
+    id: data
+    attributes:
+      label: Game data
+      options:
+        - label: This report contains no ROMs or unauthorized game-data downloads.
+          required: true

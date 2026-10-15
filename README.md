@@ -1,104 +1,111 @@
-# Pocket Dream Console on Analogue Pocket
+# Pocket Dream Console for Analogue Pocket
 
-A native FPGA implementation of the μnSP CPU, SPG200 graphics, sound and board
-peripherals. On 14 October 2026, Pocket testing confirmed full-speed gameplay,
-black startup, corrected sprite layers and all display filters in PDC30 Pink,
-PDC50, PDC100, TMNT and VideoJet TV Games 1–4. A musical-lead distortion report
-in four PDC30 games remains open; general sound effects and spoken voices were
-reported as working.
+A native openFPGA core for Pocket Dream Console and VideoJet TV Games hardware.
+The μnSP CPU, SPG200 graphics, sound and board peripherals run in the FPGA.
+No software-emulation runtime or external BIOS is required.
 
-The final entry is **PocketDreamConsole**. Version `0.2.1` consolidates the
-selected sixteen filters and swaps physical A/B globally in the core; this
-controls update still requires its new FPGA build and device confirmation.
-The previous confirmed bitstream is tagged `pocket-library-hardware-2026-10-14`
-and preserved in `build/native-selectors-workspace`. The installer saves
-verified off-card backups before replacing the software entry and removing
-old FPGA test entries. ROM bytes and archival dumps remain unchanged.
+**Status:** full-speed gameplay, graphics, audio, A/B controls and sixteen display
+filters have been confirmed on a Pocket across ten ROM profiles. This is
+functional compatibility for the tested library, not a claim that every game
+and hardware edge case is cycle-perfect.
 
-See the [refinement notes](docs/native-refinements.md) for exact validation,
-reproduction and remaining audio/save-state work, and the
-[native FPGA guide](docs/native-fpga.md) for architecture and build commands.
-Save states and sleep/resume remain unimplemented. Generated packages include
-private ROM copies and are Git-ignored; public release and pupdate integration
-remain pending.
+## Install
 
-## Earlier software emulator
+1. Download the installable `fbmrqs.PocketDreamConsole_*.zip` asset from
+   [Releases](https://github.com/fbmrqs/openFPGA-PocketDreamConsole/releases).
+   GitHub's **Source code** downloads are for development, not card installation.
+2. Merge its `Assets`, `Cores` and `Platforms` folders into the root of your
+   Pocket microSD card. Preserve existing folder contents; on macOS use **Merge**
+   rather than replacing whole folders.
+3. Add your own supported dumps to `Assets/pdc/common/` using the
+   [ROM import instructions](docs/roms.md). **No ROMs are included.**
+4. Open **openFPGA → Pocket Dream Console → PocketDreamConsole**, then choose a
+   game profile. Loading and startup-bank verification take a few seconds.
 
-The sections below describe the original experimental software emulator running
-on the openfpgaOS RISC-V FPGA runtime. This is separate from the native FPGA core
-confirmed above; its historical speed results do not describe the native build.
+The package declares Pocket firmware 1.1 or newer. Device testing used firmware
+2.7; use a current stable firmware for the sixteen selected display modes.
+Save states, sleep/resume and Dock output are not supported in this release.
 
-Version 0.1.2 is confirmed to boot on Pocket firmware 2.7, with very slow emulation reported on the device. Matching the core metadata's author and shortname to its `Local.PocketDreamConsole` folder resolved the setup failure. The overlong control label corrected in 0.1.1 was not the cause.
+## Supported hardware profiles
 
-Version 0.1.3 enables link-time optimization and fast RAM/ROM read paths. In three alternating desktop PDC30 benchmarks of 1,800 frames, median CPU time fell from 3.527 seconds (O3) to 2.587 seconds (O3 with these optimizations), about 27% less CPU time. This is a desktop comparison, not a Pocket speed measurement. Both ROMs preserve the prior headless frame hashes, program counters, bank transitions and audio activity over 1,800 frames with simulated button presses. The optimized build still needs a Pocket test; real-time performance, video appearance, audio quality and the full game libraries remain unverified.
+| Profile | Device status |
+| --- | --- |
+| PDC30 Pink | Gameplay, graphics and audio confirmed |
+| PDC50 | Confirmed |
+| PDC100 | Confirmed |
+| Teenage Mutant Ninja Turtles | Confirmed |
+| Oui-Oui | Confirmed |
+| Dora | Confirmed |
+| VideoJet TV Games 1–4 | All four confirmed |
 
-## Install the prepared build
+PDC200, PDC40 Touch and PDC150 Touch are unsupported. Other Sunplus/μnSP ROMs
+are not automatically compatible: the chip revision, board wiring, memory map
+and peripherals also have to match. See [supported dump hashes](docs/roms.md).
 
-1. Use Pocket firmware **2.2 or newer**, as required by the bundled runtime.
-2. Unzip `dist/pocket-dc-experimental.zip`.
-3. Merge its `Cores`, `Assets`, and `Platforms` folders into the root of a FAT32/exFAT microSD card. Keep each folder's contents when merging.
-4. Insert the card, then open **openFPGA → Pocket Dream Console**.
-5. Select **PDC100** or **PDC30 Pink** and run it. ROM bank loading can delay startup and game changes.
+## Controls
 
-The ZIP contains copies of the local ROMs for personal testing. The original dumps stay untouched. Use the existing Analogue button to open the Pocket menu and exit.
-
-| Pocket control | PDC control |
+| Pocket | Original PDC control |
 | --- | --- |
 | D-pad | D-pad |
-| A / B | A / B |
+| A | B |
+| B | A |
 | L / R | Left / right triggers |
 | Start | Pause |
-| Hold Select, press Start | Reset to the PDC boot menu |
+| Hold Select + press Start | Reset to the console menu |
+| Analogue button | Pocket menu |
 
-Save states and sleep/resume are not implemented.
+The A/B routing is global in the FPGA core and matches the device-confirmed
+layout. ROM bytes are not patched. Production Core Settings contain no debug
+status, fault, opcode or memory-check readouts.
 
-## Rebuild
+## Display modes
 
-Python 3, make, a C++20 host compiler, Git, and a RISC-V bare-metal GCC toolchain with `rv32imafc/ilp32f` support are required. On macOS, the tested compiler is Homebrew `riscv64-elf-gcc` 16.2.0.
+The normal output is 320 × 240. Pocket's display menu also offers:
 
-```sh
-python3 tools/bootstrap.py
-HOMEBREW_NO_INSTALL_CLEANUP=1 brew install riscv64-elf-gcc
-make -j4
-make check
-make package
-```
+| TV / color LCD | Additional handheld looks |
+| --- | --- |
+| Trinitron | GB DMG |
+| Reflective Color LCD | GBP |
+| GBC LCD+ | Original NGP |
+| Backlit Color LCD | Vacuum Fluorescent |
+| Original GBA LCD | GG |
+| SP101 | GG+ |
+| NGPC+ | TurboExpress |
+| PC Engine LT | Lynx+ |
 
-The build uses the host cross-compiler (`USE_SDK_CONTAINER=0`). The pinned SDK supplies matching prebuilt FPGA/runtime binaries and musl. No Quartus installation or FPGA synthesis is required for this route. `make headless` builds the independent desktop harness without linking the SDK runtime.
+These sixteen modes share one core entry. They are Pocket display treatments;
+CPU/game timing is unchanged by the selection.
 
-```sh
-./build/pdc-headless pdc_pink.u2 1800
-./build/pdc-headless pdc100.bin 1800
-```
+## Documentation and development
 
-The harness does not open a window or capture screenshots. It reports program counters, frame hashes, bank loads, and non-silent audio samples. After boot it sends A presses and movement to exercise the game menu. These checks establish execution and activity, not complete emulation accuracy.
+- [ROM preparation and checksums](docs/roms.md)
+- [Architecture, dependencies and validation](docs/building.md)
+- [Release procedure and updater submission](docs/releasing.md)
+- [Release and pupdate research](docs/release-research.md)
+- [Changelog](CHANGELOG.md), [contributing](CONTRIBUTING.md), [licenses and credits](NOTICE.md)
 
-## Trace the CPU for native FPGA development
+`make check-release` runs the ROM-free host checks. Native builds use Quartus
+Prime Lite 25.1 with Cyclone V support; full hardware qualification additionally
+uses Verilator, Icarus Verilog and local game dumps. See the build guide before
+starting a compile. Documentation or menu-only packaging changes reuse the
+qualified binary after verifying that all FPGA inputs remain unchanged.
 
-```sh
-make trace
-mkdir -p build/traces
-./build/pdc-trace pdc_pink.u2 1800 build/traces/pink
-./build/pdc-trace pdc100.bin 1800 build/traces/pdc100
-```
+The retired openfpgaOS software target remains in `src/main.cpp` and the legacy
+packaging tools for historical reference. It is not part of the native release.
+[Earlier software notes](docs/software-emulator.md) and the chronological
+[native development record](docs/native-fpga.md) / [refinement record](docs/native-refinements.md)
+retain previous failures and superseded measurements.
 
-Each command creates a JSONL execution trace and a JSON summary. Output paths must be new. The trace records CPU registers, status flags, shift buffers, interrupt state, modeled cycles, CPU bus reads/writes, and active ROM banks. It retains the first 4,096 CPU steps, the first occurrence of every executed opcode, every bank change, and the first 16 interrupt entries. The summary counts opcodes and CPU writes to the memory-mapped peripheral region across the full run. The scripted inputs match the headless harness.
+## ROMs, licensing and provenance
 
-Tracing is compiled only into the host tool with `PDC_CPU_TRACE`; it is absent from the Pocket build. These observations provide a software reference for the native hardware CPU. They do not measure the physical chip's timing, include peripheral-issued memory requests, or establish complete instruction and game coverage.
+Users supply game dumps they are entitled to use. The release contains only the
+core, configuration, launch profiles and notices. It does not download games.
+The local importer verifies supported dump sizes and hashes, trims the unused
+PDC100 upper half, and zero-pads the smaller VideoJet dumps for the board loader.
+Original source files remain untouched.
 
-REA 6.2.0 process capture was used to record both 1,800-frame trace runs. The evidence bundle and sampled traces are in `build/rea-pdc/`. REA's Hopper route rejected the headerless PDC ROM format, so no Hopper disassembly or decompilation of the ROMs was performed. The [existing Ghidra μnSP module](https://github.com/SamuelWAnderson45/ghidra-unSP) is a possible analysis aid, but its documented instruction and addressing limitations require checking results against the emulator.
-
-## ROMs and architecture
-
-| Dump | Identity | Source SHA-1 | Active ROM |
-| --- | --- | --- | --- |
-| `pdc100.bin` | PDC100, Conny / Anncia, US | `cfb4be7877ec263d24063a004c56985db5c0f4e2` | First 64 MiB of the 128 MiB dump |
-| `pdc_pink.u2` | PDC30 Pink, Conny / VideoJet, France | `5b423d589358dd53a2e5765bcb94da2d44200e56` | Entire 16 MiB dump |
-
-These identities, the ignored PDC100 upper half, active-high GPIO controls, 8 MiB ROM banks, reset from the final bank, and port A banking workaround follow [MAME's PDC driver](https://github.com/mamedev/mame/blob/master/src/mame/tvgames/spg2xx_pdc.cpp). The source words are little-endian; MAME's `ROM_LOAD16_WORD_SWAP` converts them for its big-endian CPU bus.
-
-`src/pdc.*` adapts the board to the vendored [veesem Sunplus emulator](https://github.com/sp1187/veesem). Only one 8 MiB bank is resident, so PDC100 does not consume all of Pocket's 64 MiB SDRAM. Bank changes synchronously load from the data file. `src/main.cpp` presents RGB555 frames and maps Pocket inputs; `src/audio.h` integrates the emulator's 281,250 Hz unsigned stereo output into 48 kHz signed stereo. `tools/package.py` verifies the original ROM hashes, ELF architecture, pinned SDK, and matching runtime manifest before assembling the SD tree.
-
-The SDK is pinned to [openfpgaSDK `a408ddc`](https://github.com/openfpgaOS/openfpgaSDK/tree/a408ddc12aed0dfaa4aa22c06af82f829db77126); its runtime manifest identifies [openfpgaCore `618a3eb`](https://github.com/openfpgaOS/openfpgaCore/tree/618a3eb). Upstream emulator notices and local modifications are recorded in `third_party/veesem/`. Runtime notices and licensing references are retained in the package's `Licenses/PocketDreamConsole` folder.
-
-The [Analogue development SDK](https://www.analogue.co/developer/docs/openfpga/getting-started) provides the framework for the native implementation in `rtl/`. See [native FPGA architecture, validation and card layout](docs/native-fpga.md). The software build described above reuses the existing FPGA runtime.
+Project code uses **ISC**. Third-party ISC/MIT notices, the Analogue Pocket
+Framework agreement and Intel/Altera FPGA IP terms remain applicable; see
+[NOTICE.md](NOTICE.md). Product and game names do not imply endorsement.
+Development used OpenAI Codex, declared in the updater metadata. No ROMs,
+recordings or commercial game artwork are part of this repository or release.
