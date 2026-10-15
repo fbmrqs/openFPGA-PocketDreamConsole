@@ -22,10 +22,11 @@ SCENES = ('hair-salon', 'bunny-pinky', 'beeline-2', 'fun-match-2')
 
 
 def validate_platform_image(data):
-    if len(data) != 521 * 165 * 2 or any(data[1::2]) or not set(data[::2]) <= {0, 41, 88, 143, 185, 242, 255}:
+    pixels = bytes(255 - value for value in data[::2])
+    if len(data) != 521 * 165 * 2 or any(data[1::2]) or not set(pixels) <= {0, 41, 88, 143, 185, 242, 255}:
         raise ValueError('Invalid seven-tone 521 × 165 APF platform graphic.')
     points = [(520 - index // 165, index % 165)
-              for index, value in enumerate(data[::2]) if value != 255]
+              for index, value in enumerate(pixels) if value != 255]
     if not points or (min(x for x, y in points), max(x for x, y in points), max(y for x, y in points)) != (131, 248, 136):
         raise ValueError('Platform graphic differs from the portable left edge, width or baseline.')
 

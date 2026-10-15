@@ -29,10 +29,10 @@ def main():
     assets.mkdir(parents=True, exist_ok=True)
     image.save(assets / 'handheld-platform.png')
     image.resize((1563, 495), Image.Resampling.NEAREST).save(assets / 'handheld-banner.png')
-    # APF stores pixels rotated counterclockwise, with brightness then a zero byte.
+    # APF stores counterclockwise pixels with inverted brightness, then zero.
     rotated = image.transpose(Image.Transpose.ROTATE_90).convert('L')
     data = bytearray(rotated.width * rotated.height * 2)
-    data[::2] = rotated.tobytes()
+    data[::2] = bytes(255 - value for value in rotated.tobytes())
     (ROOT / 'release/pdc-platform.bin').write_bytes(data)
     print(f'Exported native platform image, exact 3× banner and {len(data)}-byte APF graphic.')
 

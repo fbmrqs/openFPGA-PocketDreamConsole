@@ -10,6 +10,8 @@
 - Omit diagnostic readouts, retired runtime binaries and borrowed runtime art.
 - Include the procedural handheld platform image with the portable layout,
   matching README banner and reproducible Blender generator.
+- Correct the platform graphic's stored brightness polarity for Pocket display;
+  keep normal PNG colours and add a reference-decoder regression check.
 - Add local dump import, source/binary provenance, archive checksums, licensing
   notices, updater metadata, contribution guidance and ROM-free CI checks.
 

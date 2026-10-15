@@ -17,6 +17,14 @@ import release
 
 
 class PublicPackage(unittest.TestCase):
+    def test_platform_background_matches_reference_decoder_polarity(self):
+        data = (ROOT / 'release/pdc-platform.bin').read_bytes()
+        # The upstream Library decoder uses 255 - stored brightness.
+        # The supplied artwork has a white canvas, including all four corners.
+        for x, y in ((0, 0), (520, 0), (0, 164), (520, 164)):
+            index = ((520 - x) * 165 + y) * 2
+            self.assertEqual(255 - data[index], 255)
+
     def setUp(self):
         self.metadata = json.loads((ROOT / 'release/metadata.json').read_text())
         self.metadata['bitstream_sha256'] = hashlib.sha256(b'qualified-fpga').hexdigest()

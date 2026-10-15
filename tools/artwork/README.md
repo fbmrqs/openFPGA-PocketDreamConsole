@@ -22,6 +22,10 @@ The Blender script retains editable `.blend` and `.glb` files under ignored
 the native PNG and exact nearest-neighbor 3× README banner under `docs/assets/`,
 and writes `release/pdc-platform.bin`. That public graphic is the sole exception
 to the repository's binary-dump exclusion. It is 171,930 bytes: rotated 90°
-counterclockwise, with one brightness byte followed by zero for each pixel.
+counterclockwise, with one **inverted** brightness byte (`255 - PNG gray`)
+followed by zero for each pixel. Pocket and the upstream Library decoder invert
+that byte when displaying the image. A white PNG background must therefore be
+stored as zero, rather than 255. The regression test checks the white corners;
+decoding the export with the reference polarity must reproduce the source PNG.
 The release packager validates this format and includes it in
 `Platforms/_images/pdc.bin`; it does not change the FPGA binary.
