@@ -21,6 +21,15 @@ PROFILES = {'pdc30': 'PDC30 Pink', 'pdc100': 'PDC100',
 SCENES = ('hair-salon', 'bunny-pinky', 'beeline-2', 'fun-match-2')
 
 
+def validate_platform_image(data):
+    if len(data) != 521 * 165 * 2 or any(data[1::2]) or not set(data[::2]) <= {0, 41, 88, 143, 185, 242, 255}:
+        raise ValueError('Invalid seven-tone 521 × 165 APF platform graphic.')
+    points = [(520 - index // 165, index % 165)
+              for index, value in enumerate(data[::2]) if value != 255]
+    if not points or (min(x for x, y in points), max(x for x, y in points), max(y for x, y in points)) != (131, 248, 136):
+        raise ValueError('Platform graphic differs from the portable left edge, width or baseline.')
+
+
 def encoded(value):
     return (json.dumps(value, indent=2) + '\n').encode()
 
@@ -89,7 +98,8 @@ def release_files(old_core, package, metadata):
         files[f'Assets/pdc/{core_id}/{label}.json'] = encoded({'instance': {
             'magic': 'APF_VER_1', 'data_slots': [{'id': 1, 'filename': stem + '.rom'}]}})
     files['Platforms/pdc.json'] = (package / 'Platforms/pdc.json').read_bytes()
-    # Author icons and platform artwork from the former runtime are not reused.
+    files['Platforms/_images/pdc.bin'] = (ROOT / 'release/pdc-platform.bin').read_bytes()
+    # The previous runtime's author icon is not reused.
     for source, name in (
         ('LICENSE', 'LICENSE'), ('NOTICE.md', 'NOTICE.md'),
         ('third_party/veesem/LICENSE', 'veesem-ISC.txt'),
@@ -106,6 +116,7 @@ def validate_release(files, metadata):
     core_id = metadata['author'] + '.' + metadata['shortname']
     core = 'Cores/' + core_id + '/'
     allowed = {core + name for name in CORE_FILES} | {'Platforms/pdc.json'}
+    allowed.add('Platforms/_images/pdc.bin')
     allowed |= {core + 'updaters.json', core + 'README.md'}
     allowed |= {f'Assets/pdc/{core_id}/{label}.json' for label in PROFILES.values()}
     allowed |= {core + 'licenses/' + name for name in (
@@ -113,6 +124,7 @@ def validate_release(files, metadata):
         'Analogue-Pocket-Framework.txt', 'Intel-FPGA-IP.txt', 'memory-controller-changes.md')}
     if set(files) != allowed:
         raise ValueError('Archive contains missing or unexpected files; ROMs are never permitted.')
+    validate_platform_image(files['Platforms/_images/pdc.bin'])
     for name, data in files.items():
         if name.endswith('.json'):
             json.loads(data)

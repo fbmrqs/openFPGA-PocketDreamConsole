@@ -26,3 +26,6 @@ __pycache__/
 .env.*
 *.pem
 *.key
+
+# Generated, redistributable platform artwork; other .bin files stay private.
+!/release/pdc-platform.bin

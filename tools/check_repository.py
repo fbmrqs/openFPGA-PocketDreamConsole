@@ -12,6 +12,8 @@ SECRETS = re.compile(rb'(?:gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{40
 
 
 def private_path(name):
+    if name == 'release/pdc-platform.bin':
+        return False
     path = Path(name)
     if not path.parts:
         return False

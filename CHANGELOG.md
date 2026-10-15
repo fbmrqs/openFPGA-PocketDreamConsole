@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.3.0 — 2026-10-15
+## 1.0.0 — 2026-10-15
 
 - Prepare the first ROM-free GitHub release under `fbmrqs.PocketDreamConsole`.
 - Confirm PDC30 Pink, PDC50, PDC100, TMNT, Oui-Oui, Dora and VideoJet TV Games 1–4
@@ -8,6 +8,8 @@
 - Retain black startup, corrected mixed-sprite priority, globally swapped A/B
   and the sixteen selected display modes in a single entry.
 - Omit diagnostic readouts, retired runtime binaries and borrowed runtime art.
+- Include the procedural handheld platform image with the portable layout,
+  matching README banner and reproducible Blender generator.
 - Add local dump import, source/binary provenance, archive checksums, licensing
   notices, updater metadata, contribution guidance and ROM-free CI checks.
 

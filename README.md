@@ -6,6 +6,8 @@ A native openFPGA core for Pocket Dream Console and VideoJet TV Games hardware.
 The μnSP CPU, SPG200 graphics, sound and board peripherals run in the FPGA.
 No software-emulation runtime or external BIOS is required.
 
+**Release: 1.0.0** (private draft).
+
 **Status:** full-speed gameplay, graphics, audio, A/B controls and sixteen display
 filters have been confirmed on a Pocket across ten ROM profiles. This is
 functional compatibility for the tested library, not a claim that every game
@@ -109,5 +111,7 @@ Original source files remain untouched.
 Project code uses **ISC**. Third-party ISC/MIT notices, the Analogue Pocket
 Framework agreement and Intel/Altera FPGA IP terms remain applicable; see
 [NOTICE.md](NOTICE.md). Product and game names do not imply endorsement.
-Development used OpenAI Codex, declared in the updater metadata. No ROMs,
+The procedural handheld artwork and its generator are described in
+[the artwork guide](tools/artwork/README.md). Development used OpenAI Codex,
+declared in the updater metadata. No ROMs,
 recordings or commercial game artwork are part of this repository or release.

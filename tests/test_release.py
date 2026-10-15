@@ -69,6 +69,7 @@ class PublicPackage(unittest.TestCase):
                 {'Assets/pdc/common/game.rom': b'private'},
                 {self.core + 'interact.json': release.encoded({'interact': {'magic': 'APF_VER_1', 'variables': [{'name': 'O'}], 'messages': []}})},
                 {self.core + 'bitstream.rbf_r': b'unqualified'},
+                {'Platforms/_images/pdc.bin': b'unexpected-game-data'},
                 {self.core + 'core.json': release.encoded({'core': {'metadata': {}}})},
                 {self.core + 'updaters.json': release.encoded({'declare_ai': ['OpenAI Codex'], 'license': {'filename': 'LICENSE'}})},
                 {self.core + 'updaters.json': release.encoded({'declare_ai': ['OpenAI Codex'], 'previous': []})}]
@@ -119,6 +120,8 @@ class LocalImport(unittest.TestCase):
         for name in ('rom.bin', 'private.wav', 'build/status.json', '.env', 'dump.u2'):
             self.assertTrue(check_repository.private_path(name))
         self.assertFalse(check_repository.private_path('rtl/pdc_system.sv'))
+        self.assertFalse(check_repository.private_path('release/pdc-platform.bin'))
+        self.assertTrue(check_repository.private_path('release/other.bin'))
 
 
 if __name__ == '__main__':
