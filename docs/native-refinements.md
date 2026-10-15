@@ -720,3 +720,12 @@ constraints; no constraints or qualification thresholds were relaxed.
 PDC100 and Bunny Pinky also completed their full current-source comparisons.
 Beeline 2, Fun Match 2 and fresh extra-ROM validation remain before packaging.
 Nothing new is installed, and physical audio/control confirmation is pending.
+
+All four reported music scenes and both original ROMs subsequently passed their
+full 1,800-frame production-output comparisons on `3d287a2`. Component, FPGA,
+original-ROM and four scene receipts were independently required against the
+frozen source and matched. Beeline 2/Fun Match 2 maximum backlogs were
+42,338/36,159 cycles, with CPU/banking/pixels/stereo comparisons passing.
+Fresh extra-ROM checks have passed PDC50 and Oui-Oui so far; remaining profiles
+are still running. No prior revision's results are used for this qualification,
+and no card installation or physical music confirmation has occurred yet.
