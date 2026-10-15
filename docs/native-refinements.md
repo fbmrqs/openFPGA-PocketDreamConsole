@@ -709,3 +709,14 @@ Maximum modeled backlog returned to 70,709 cycles, matching the earlier passing
 scene. Pink's original full run also passed. This confirms the frame-1,025
 simulation regression is removed after restoring selector latency; physical
 audio, remaining scene/library qualification and device timing are still pending.
+
+The `3d287a2` physical compilation passed all four required timing corners.
+Setup slacks were 0.001, 0.005, 4.184 and 4.495 ns; hold, recovery and removal
+also passed in every corner. The frozen-source FPGA receipt was independently
+required and its timing record and bitstream hashes matched
+`b7bff553bf58d7c615f8aa4c18fe6d0905c4c257d72debcb0a31657968eaa361`.
+The reported slow-corner margins are small but positive under the existing
+constraints; no constraints or qualification thresholds were relaxed.
+PDC100 and Bunny Pinky also completed their full current-source comparisons.
+Beeline 2, Fun Match 2 and fresh extra-ROM validation remain before packaging.
+Nothing new is installed, and physical audio/control confirmation is pending.
