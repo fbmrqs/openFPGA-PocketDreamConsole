@@ -755,3 +755,20 @@ The hourly follow-up can now pause after reporting installation. A/B, filters,
 the four music scenes and the newly qualified Oui-Oui/Dora profiles still need
 physical confirmation. Installation and simulated matching do not establish
 that the reported audible wobble is resolved.
+
+
+## Device confirmation, 15 October 2026
+
+Fabio reports that “everything has worked” with the installed official core,
+and explicitly confirms “oui oui and dora are perfect”. This is the device
+confirmation following the requested A/B, sixteen-filter, four music-scene and
+new-ROM checks. No remaining issue was reported. The confirmed source is
+`3d287a21d1636944c6d9e1bcea4822d856a92670`, with installed bitstream SHA-256
+`bdb979ce0c531a9c15ed3ad09c37243a09a8739bce585c5f73b8dc791d52e98f`.
+
+Record this as user-confirmed functional parity for the tested library and
+behavior. The broad listening/playtest report is qualitative; it does not
+establish exhaustive coverage of every minigame or cycle-perfect accuracy.
+Save states remain deferred. The hourly follow-up remains paused. Historical
+qualification receipts and package-time hardware-verification fields are
+preserved unchanged.
