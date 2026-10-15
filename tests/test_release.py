@@ -69,7 +69,9 @@ class PublicPackage(unittest.TestCase):
                 {'Assets/pdc/common/game.rom': b'private'},
                 {self.core + 'interact.json': release.encoded({'interact': {'magic': 'APF_VER_1', 'variables': [{'name': 'O'}], 'messages': []}})},
                 {self.core + 'bitstream.rbf_r': b'unqualified'},
-                {self.core + 'core.json': release.encoded({'core': {'metadata': {}}})}]
+                {self.core + 'core.json': release.encoded({'core': {'metadata': {}}})},
+                {self.core + 'updaters.json': release.encoded({'declare_ai': ['OpenAI Codex'], 'license': {'filename': 'LICENSE'}})},
+                {self.core + 'updaters.json': release.encoded({'declare_ai': ['OpenAI Codex'], 'previous': []})}]
             for change in bad_inputs:
                 with self.subTest(change=list(change)), self.assertRaises((ValueError, KeyError)):
                     release.validate_release({**files, **change}, self.metadata)

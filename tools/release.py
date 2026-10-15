@@ -162,6 +162,8 @@ def main():
     parser.add_argument('--workspace', type=Path, required=True)
     parser.add_argument('--output', type=Path, default=ROOT / 'dist/release')
     args = parser.parse_args()
+    if subprocess.check_output(['git', '-C', str(ROOT), 'status', '--porcelain'], text=True).strip():
+        raise ValueError('Commit the release inputs before packaging so build-info identifies their exact revision.')
     metadata = json.loads((ROOT / 'release/metadata.json').read_text())
     if not re.fullmatch(r'[A-Za-z0-9_-]+/[A-Za-z0-9_.-]+', metadata['repository']):
         raise ValueError('Invalid repository identity.')
