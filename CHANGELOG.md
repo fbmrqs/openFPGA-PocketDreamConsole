@@ -4,7 +4,7 @@
 
 - Prepare the first ROM-free GitHub release under `fbmrqs.PocketDreamConsole`.
 - Confirm PDC30 Pink, PDC50, PDC100, TMNT, Oui-Oui, Dora and VideoJet TV Games 1–4
-  on the Pocket, including full-speed gameplay and the music refinements.
+  on the Pocket, including full-speed gameplay, graphics and audio.
 - Retain black startup, corrected mixed-sprite priority, globally swapped A/B
   and the sixteen selected display modes in a single entry.
 - Omit diagnostic readouts, retired runtime binaries and borrowed runtime art.

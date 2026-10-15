@@ -35,12 +35,12 @@ Save states, sleep/resume and Dock output are not supported in this release.
 | Profile | Device status |
 | --- | --- |
 | PDC30 Pink | Gameplay, graphics and audio confirmed |
-| PDC50 | Confirmed |
-| PDC100 | Confirmed |
-| Teenage Mutant Ninja Turtles | Confirmed |
-| Oui-Oui | Confirmed |
-| Dora | Confirmed |
-| VideoJet TV Games 1–4 | All four confirmed |
+| PDC50 | Gameplay, graphics and audio confirmed |
+| PDC100 | Gameplay, graphics and audio confirmed |
+| Teenage Mutant Ninja Turtles | Gameplay, graphics and audio confirmed |
+| Oui-Oui | Gameplay, graphics and audio confirmed |
+| Dora | Gameplay, graphics and audio confirmed |
+| VideoJet TV Games 1–4 | Gameplay, graphics and audio confirmed for all four |
 
 PDC200, PDC40 Touch and PDC150 Touch are unsupported. Other Sunplus/μnSP ROMs
 are not automatically compatible: the chip revision, board wiring, memory map

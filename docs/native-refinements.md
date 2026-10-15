@@ -777,3 +777,8 @@ establish exhaustive coverage of every minigame or cycle-perfect accuracy.
 Save states remain deferred. The hourly follow-up remains paused. Historical
 qualification receipts and package-time hardware-verification fields are
 preserved unchanged.
+
+
+Fabio subsequently explicitly confirmed gameplay, graphics and audio for every
+listed supported profile, including all four VideoJet TV Games profiles. The
+compatibility table and 1.0.0 draft notes now state that scope consistently.
