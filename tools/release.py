@@ -125,11 +125,8 @@ def validate_release(files, metadata):
     if menu != {'magic': 'APF_VER_1', 'variables': [], 'messages': []}:
         raise ValueError('Release contains diagnostic settings.')
     updater = json.loads(files[core + 'updaters.json'])
-    if 'license' in updater or not updater.get('declare_ai'):
-        raise ValueError('Updater metadata must disclose tools without requesting a license key.')
-    for previous in updater.get('previous', []):
-        if set(previous) != {'shortname', 'author', 'platform_id'}:
-            raise ValueError('Invalid previous-core migration identity.')
+    if set(updater) != {'declare_ai'} or not updater['declare_ai']:
+        raise ValueError('Updater metadata must disclose tools without activation keys or unsafe directory migrations.')
     definition = json.loads(files[core + 'core.json'])['core']
     for key in ('author', 'shortname', 'version', 'date_release'):
         if definition['metadata'][key] != metadata[key]:

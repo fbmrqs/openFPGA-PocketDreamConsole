@@ -55,12 +55,15 @@ Library [Add Core form](https://github.com/openfpga-library/analogue-pocket/issu
 with repository `fbmrqs/openFPGA-PocketDreamConsole` and asset filter
 `^fbmrqs\.PocketDreamConsole_.*\.zip$`. No submission has been sent automatically.
 
-`release/updaters.json` is copied into the installed core directory. It declares
-the old Local test identities as migration objects and discloses OpenAI Codex.
+`release/updaters.json` is copied into the installed core directory and discloses
+OpenAI Codex. Old Local identities are deliberately not automatic replacements:
+the inspected updater moves the old asset directory after installing the new
+one, which can collide with the launch-profile directory already in the ZIP.
 Do not add `license.filename`: that field requests an activation key, not an
-open-source license notice. Migration behavior still depends on the updater and
-should be checked when onboarding. Manual installs leave old Local entries in
-place; back them up before removing them and preserve `Assets/pdc/common/`.
+open-source license notice. Both manual and updater installs can leave old Local
+entries in place. Back them up before removing their `Cores/Local.*` and matching
+`Assets/pdc/Local.*` directories, and preserve `Assets/pdc/common/`. Remove only
+the PDC entries you recognize, after checking the new entry; never other cores.
 
 pupdate installs core releases through the Library inventory. Its asset archive
 download mechanism is separate; it does not grant ROM redistribution rights.
