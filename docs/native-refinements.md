@@ -5,7 +5,7 @@
 
 # Display, sprite priority and compatibility follow-up
 
-The recovery baseline is commit `8338dc7`, tag
+The recovery baseline is commit `c6884b3`, tag
 `pocket-full-speed-2026-10-12`. Full-speed gameplay and correct audio were confirmed
 on Pocket in both PDC30 Pink and PDC100. New source changes require fresh
 simulation, four-corner timing, package verification and a Pocket test.
@@ -387,7 +387,7 @@ clock counts. Full game validation and physical timing closure remain pending.
 
 ## Verified library installation — 14 October 2026
 
-Source commit `9c79abd312d71956419cd18726cd7a6a841b55c0` passed the complete
+Source commit `e6231cfaddfdbee9510946aa63e834281e245845` passed the complete
 component checks, both original 1,800-frame Pocket output comparisons, and
 PDC50, TMNT and VideoJet 1–4 readback/output comparisons. All four physical
 timing corners passed; setup slacks in corner order were [0.213, 0.41, 4.006, 4.496] ns.
@@ -407,7 +407,7 @@ priority, gameplay and sound is still pending; save states remain unimplemented.
 Fabio confirmed black startup, corrected Pot Pit layering, all filters in both
 entries, and full-speed gameplay in PDC30 Pink, PDC50, PDC100, TMNT and
 VideoJet TV Games 1–4, with no observed slowdown or graphics issues. The
-confirmed bitstream comes from source commit `9c79abd`; this is the preserved
+confirmed bitstream comes from source commit `e6231cf`; this is the preserved
 pre-control-swap hardware milestone.
 
 Remaining reports: A/B need swapping globally at the Pocket input boundary.
@@ -542,7 +542,7 @@ release qualification gates remain pending.
 
 ## Hair Salon deadline confirmation and next timing paths
 
-Source `722ee41` completed the entire 1,800-frame Hair Salon production-output
+Source `0346710` completed the entire 1,800-frame Hair Salon production-output
 comparison. CPU, banking, every pixel and every stereo pair matched reference;
 no output FIFO faults or processing overflow occurred. Maximum modeled backlog
 was 70,709 cycles (2.619 ms), below the 131,071-cycle limit and 256-sample audio
@@ -573,7 +573,7 @@ changed-source system receipts are not reused.
 
 ## Optional ROM success during combined validation
 
-Source `722ee41` passed all four 1,800-frame music-scene comparisons and both
+Source `0346710` passed all four 1,800-frame music-scene comparisons and both
 original ROM comparisons. Its fresh library run also passed Oui-Oui's complete
 CRC readback and 1,800-frame production-output comparison; the remaining ROMs
 are still running. Oui-Oui is therefore qualified for simulation on that source,
@@ -593,14 +593,14 @@ waits for the original collector to finish and resumes compilation/packaging
 without changing HDL, receipts or replaying completed tests. Existing job
 history is preserved. No new FPGA package or card installation is ready yet.
 
-Both combined sources (`722ee41` and `71e5834`) subsequently passed both
+Both combined sources (`0346710` and `9c52d19`) subsequently passed both
 original ROMs, all four music scenes and all eight extra profiles, including
 Oui-Oui and Dora. Each full-system run checked 1,800 production-output frames
 against its own frozen source. Neither additional profile has device
 confirmation yet. The recovery collectors accepted these completed receipts
 without replaying tests or changing their results.
 
-The earlier combined source `722ee41` failed setup timing at -0.389/-0.154 ns
+The earlier combined source `0346710` failed setup timing at -0.389/-0.154 ns
 in the two slow corners; its fast corners passed at 4.181/4.489 ns. Hold,
 recovery and removal passed in all four corners. The worst path runs from the
 graphics memory request through active-grant selection and the lookahead
@@ -608,14 +608,14 @@ address mux into the captured shared-bus address. Other slow-corner violations
 include SPU register reads into CPU state and SPU channel-register writes.
 The failed workspace and reports remain preserved and no package was installed.
 
-Source `71e5834`, which already captures the new bus grant directly, is now
+Source `9c52d19`, which already captures the new bus grant directly, is now
 compiling in `build/native-decode-workspace` after the earlier compiler exited.
 Its physical timing remains pending; simulation success does not qualify a
 bitstream or establish that the physical music distortion is resolved.
 
 ## Control-path timing repair
 
-The `71e5834` compilation failed slow setup at -0.446/-0.326 ns; fast setup
+The `9c52d19` compilation failed slow setup at -0.446/-0.326 ns; fast setup
 passed at 3.717/4.024 ns. The earlier graphics grant path no longer appears
 among the reported worst paths. The new report identifies the PSRAM output
 enable through its state-case priority, the sound channel's binary eligibility
@@ -644,15 +644,15 @@ compilation alongside independent simulations, then require all current-source
 receipts, four-corner timing and package validation before installation. This
 ordering does not relax any release gate.
 
-Quartus rejected the inline generate-loop `genvar` declaration in `05ee953`
-during initial analysis. Source `8fca68a` moves that declaration outside the
+Quartus rejected the inline generate-loop `genvar` declaration in `e416bd2`
+during initial analysis. Source `430c8d9` moves that declaration outside the
 loop, matching the syntax already used by the arbiter. A new frozen
 `build/native-prefix-workspace` runs fresh compilation and qualification;
 independent simulations in the rejected workspace remain running and are not
 used as passing receipts for the new source. The declaration change passed
 Verilator lint. Compiler acceptance and all release gates still need checking.
 
-Source `8fca68a` completed compilation but failed slow setup at
+Source `430c8d9` completed compilation but failed slow setup at
 -0.315/-0.276 ns; fast setup passed at 4.006/4.462 ns. Hold, recovery and
 removal passed in all four corners. Its worst reported paths now run from CPU
 instruction/register selection through the address-source mux into `bus_addr`.
@@ -679,7 +679,7 @@ and physical timing remain mandatory. The next collector defers queued tests
 if its compiler fails while allowing already-active independent tests to finish;
 deferred tests are never recorded as passing or used to qualify a package.
 
-Source `67cc7a9` failed slow setup at -0.443/-0.127 ns. Its reported worst
+Source `57ea4e2` failed slow setup at -0.443/-0.127 ns. Its reported worst
 paths run from framebuffer read pulses through the PSRAM state-case controls
 into byte enables, ADV and DQ output enable. The earlier CPU address path is
 absent from those worst paths. Fast setup and all hold/recovery/removal checks
@@ -707,7 +707,7 @@ queued tests on any required failure while retaining active independent checks.
 The frame-1,025 failure remains the full-system regression gate; unit checks do
 not establish that it is removed, and full-device timing remains mandatory.
 
-Source `3d287a2` completed Hair Salon's full 1,800-frame production-output
+Source `16f3d84` completed Hair Salon's full 1,800-frame production-output
 regression: 174,005,112 instructions and 2,946,384,587 FPGA clocks matched CPU,
 banking, pixels and stereo reference output without FIFO/deadline failure.
 Maximum modeled backlog returned to 70,709 cycles, matching the earlier passing
@@ -715,7 +715,7 @@ scene. Pink's original full run also passed. This confirms the frame-1,025
 simulation regression is removed after restoring selector latency; physical
 audio, remaining scene/library qualification and device timing are still pending.
 
-The `3d287a2` physical compilation passed all four required timing corners.
+The `16f3d84` physical compilation passed all four required timing corners.
 Setup slacks were 0.001, 0.005, 4.184 and 4.495 ns; hold, recovery and removal
 also passed in every corner. The frozen-source FPGA receipt was independently
 required and its timing record and bitstream hashes matched
@@ -727,7 +727,7 @@ Beeline 2, Fun Match 2 and fresh extra-ROM validation remain before packaging.
 Nothing new is installed, and physical audio/control confirmation is pending.
 
 All four reported music scenes and both original ROMs subsequently passed their
-full 1,800-frame production-output comparisons on `3d287a2`. Component, FPGA,
+full 1,800-frame production-output comparisons on `16f3d84`. Component, FPGA,
 original-ROM and four scene receipts were independently required against the
 frozen source and matched. Beeline 2/Fun Match 2 maximum backlogs were
 42,338/36,159 cycles, with CPU/banking/pixels/stereo comparisons passing.
@@ -738,7 +738,7 @@ and no card installation or physical music confirmation has occurred yet.
 ## Official card installation, 15 October 2026
 
 All eight extra profiles passed fresh CRC/readback and 1,800-frame
-production-output checks on `3d287a2`, including Oui-Oui and Dora. The qualified
+production-output checks on `16f3d84`, including Oui-Oui and Dora. The qualified
 package and package tests passed, and the official `Local.PocketDreamConsole`
 entry was installed onto card UUID `<private-device-id>`.
 An independent post-install check matched all 40 release-manifest file hashes
@@ -768,7 +768,7 @@ Fabio reports that “everything has worked” with the installed official core,
 and explicitly confirms “oui oui and dora are perfect”. This is the device
 confirmation following the requested A/B, sixteen-filter, four music-scene and
 new-ROM checks. No remaining issue was reported. The confirmed source is
-`3d287a21d1636944c6d9e1bcea4822d856a92670`, with installed bitstream SHA-256
+`16f3d842759f176581abed5c6fadd29ef3335536`, with installed bitstream SHA-256
 `bdb979ce0c531a9c15ed3ad09c37243a09a8739bce585c5f73b8dc791d52e98f`.
 
 Record this as user-confirmed functional parity for the tested library and

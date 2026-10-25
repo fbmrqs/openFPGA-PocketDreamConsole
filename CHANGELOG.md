@@ -15,7 +15,7 @@
 - Add local dump import, source/binary provenance, archive checksums, licensing
   notices, updater metadata, contribution guidance and ROM-free CI checks.
 
-The FPGA binary is the unchanged hardware-confirmed build from source `3d287a2`.
+The FPGA binary is the unchanged hardware-confirmed build from source `16f3d84`.
 This release changes packaging and documentation only. Save states, sleep/resume,
 Dock output and unsupported hardware profiles remain deferred.
 

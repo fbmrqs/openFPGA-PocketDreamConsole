@@ -82,7 +82,7 @@ Four-corner setup, hold, recovery and removal checks must pass without weakening
 constraints. Keep failed workspaces and their exact reports. Test a replacement
 package on a device before promoting its hardware compatibility claims.
 
-The hardware-confirmed RTL source is `3d287a2`; the release repackages its exact
+The hardware-confirmed RTL source is `16f3d84`; the release repackages its exact
 binary. Its four setup margins are 0.001, 0.005, 4.184 and 4.495 ns. All other
 required timing checks passed. The small slow-corner margins are disclosed;
 qualification is tied to that exact build, not extrapolated to new source.

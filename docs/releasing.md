@@ -40,7 +40,7 @@ workspace identity and private package hashes. It copies only an explicit
 public-file allowlist. Unexpected files, changed hardware or missing evidence
 stop release creation. The generated ZIP is read back and checked before success.
 
-The first hardware source is `3d287a2`; later documentation and release-tooling
+The first hardware source is `16f3d84`; later documentation and release-tooling
 commits do not change the FPGA. `build-info.json` records both hardware source and
 packaging commit. The original private receipts are preserved, not rewritten.
 
