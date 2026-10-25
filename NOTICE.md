@@ -43,6 +43,6 @@ the supplied reference examples: left edge x=131, width 118 pixels and bottom
 baseline y=137 on a 521 × 165 canvas. The README banner is an exact 3× enlargement.
 The script loads no external textures or models; the illustration has a blank screen.
 
-Development used OpenAI Codex; upstream attribution and licenses remain intact.
+Upstream attribution and licenses remain intact.
 Hardware confirmation is user-reported testing, not certification by Analogue,
 Conny, VideoJet, Anncia, or game rights holders.

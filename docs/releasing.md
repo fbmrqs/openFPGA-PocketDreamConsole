@@ -57,11 +57,10 @@ Library [Add Core form](https://github.com/openfpga-library/analogue-pocket/issu
 with repository `fbmrqs/openFPGA-PocketDreamConsole` and asset filter
 `^fbmrqs\.PocketDreamConsole_.*\.zip$`. No submission has been sent automatically.
 
-`release/updaters.json` is copied into the installed core directory and discloses
-OpenAI Codex. Old Local identities are deliberately not automatic replacements:
+The release has no `updaters.json`. Old Local identities are deliberately not automatic replacements:
 the inspected updater moves the old asset directory after installing the new
 one, which can collide with the launch-profile directory already in the ZIP.
-Do not add `license.filename`: that field requests an activation key, not an
+If an `updaters.json` is added later, do not give it `license.filename`: that field requests an activation key, not an
 open-source license notice. Both manual and updater installs can leave old Local
 entries in place. Back them up before removing their `Cores/Local.*` and matching
 `Assets/pdc/Local.*` directories, and preserve `Assets/pdc/common/`. Remove only

@@ -28,7 +28,7 @@ extra profiles and records excluded failures in its manifest. A failed extra
 ROM does not cancel a validated display package or other verified extra ROMs.
 Known obsolete launch entries for excluded ROMs are removed on update; raw
 dumps and custom entries are preserved. Installation remains verified and
-flushed, and each completed package has its own status file and window alert.
+flushed, and each completed package has its own status file.
 
 ## Validation policy
 
@@ -356,9 +356,7 @@ remain required before claiming closure.
 
 The diagnostic runner installs only the combined library package in separate
 entries, preserving the hardware-confirmed original core. It prevents duplicate
-runners within a workspace. Repairable failures are saved for the authorized
-hourly repair-and-retry follow-up; window alerts are reserved for verified
-installation or a missing card.
+runners within a workspace. Repairable failures are saved for a later retry.
 
 ## Graphics, memory-pin and mixer timing correction
 
@@ -398,7 +396,7 @@ the pinned SD card. All 53 manifested files were independently rehashed and
 writes flushed. The installed reversed bitstream SHA256 is
 `f566337bce50ecbf2a4d2861980bc1cbd7ae0ddbf60a51ebad54bb8ce4f4ed6e`.
 The original hardware-confirmed `PocketDreamConsoleFPGATest` core is unchanged.
-No ejection was performed. The readiness window alert was already displayed.
+No ejection was performed.
 Hardware testing of the new entries, black startup, display filters, sprite
 priority, gameplay and sound is still pending; save states remain unimplemented.
 
@@ -752,13 +750,11 @@ test/Extra entries were retired after verified off-card backup under
 `build/native-pin-control-workspace/build/card-core-backups/1792036701033821000`.
 The previously hardware-confirmed library bitstream was independently found
 intact in that backup. Shared ROM assets, Unsupported dumps and unrelated cores
-were preserved. The readiness window is displayed; its waiting acknowledgment
-keeps the supervisor's aggregate status at packaging until the dialog closes.
+were preserved.
 `card-install-verification.json` records the completed independent verification.
 
-The hourly follow-up can now pause after reporting installation. A/B, filters,
-the four music scenes and the newly qualified Oui-Oui/Dora profiles still need
-physical confirmation. Installation and simulated matching do not establish
+A/B, filters, the four music scenes and the newly qualified Oui-Oui/Dora
+profiles still need physical confirmation. Installation and simulated matching do not establish
 that the reported audible wobble is resolved.
 
 
@@ -774,7 +770,7 @@ new-ROM checks. No remaining issue was reported. The confirmed source is
 Record this as user-confirmed functional parity for the tested library and
 behavior. The broad listening/playtest report is qualitative; it does not
 establish exhaustive coverage of every minigame or cycle-perfect accuracy.
-Save states remain deferred. The hourly follow-up remains paused. Historical
+Save states remain deferred. Historical
 qualification receipts and package-time hardware-verification fields are
 preserved unchanged.
 

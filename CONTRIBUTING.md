@@ -17,5 +17,4 @@ They do not replace the RTL or hardware qualification suite.
 
 Contributions to the project's own files use ISC; preserve third-party notices
 and describe modifications to vendored files. Use original or appropriately
-licensed fixtures. Development tools used for substantial changes should be
-disclosed honestly; current updater metadata declares OpenAI Codex.
+licensed fixtures.

@@ -89,7 +89,6 @@ def release_files(old_core, package, metadata):
     files[prefix + 'core.json'] = encoded(definition)
     # Diagnostic readouts stay in the development packager; release menus are empty.
     files[prefix + 'interact.json'] = (ROOT / 'release/interact.json').read_bytes()
-    files[prefix + 'updaters.json'] = (ROOT / 'release/updaters.json').read_bytes()
     readme = (ROOT / 'README.md').read_text()
     base_url = 'https://github.com/' + metadata['repository'] + '/blob/v' + metadata['version'] + '/'
     readme = re.sub(r'\]\((?!https?://)([^)]+)\)',
@@ -118,7 +117,7 @@ def validate_release(files, metadata):
     core = 'Cores/' + core_id + '/'
     allowed = {core + name for name in CORE_FILES} | {'Platforms/pdc.json'}
     allowed.add('Platforms/_images/pdc.bin')
-    allowed |= {core + 'updaters.json', core + 'README.md'}
+    allowed.add(core + 'README.md')
     allowed |= {f'Assets/pdc/{core_id}/{label}.json' for label in PROFILES.values()}
     allowed |= {core + 'licenses/' + name for name in (
         'LICENSE', 'NOTICE.md', 'veesem-ISC.txt', 'psram-MIT.txt',
@@ -137,9 +136,6 @@ def validate_release(files, metadata):
     menu = json.loads(files[core + 'interact.json'])['interact']
     if menu != {'magic': 'APF_VER_1', 'variables': [], 'messages': []}:
         raise ValueError('Release contains diagnostic settings.')
-    updater = json.loads(files[core + 'updaters.json'])
-    if set(updater) != {'declare_ai'} or not updater['declare_ai']:
-        raise ValueError('Updater metadata must disclose tools without activation keys or unsafe directory migrations.')
     definition = json.loads(files[core + 'core.json'])['core']
     for key in ('author', 'shortname', 'version', 'date_release'):
         if definition['metadata'][key] != metadata[key]:

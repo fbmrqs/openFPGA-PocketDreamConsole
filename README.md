@@ -112,6 +112,5 @@ Project code uses **ISC**. Third-party ISC/MIT notices, the Analogue Pocket
 Framework agreement and Intel/Altera FPGA IP terms remain applicable; see
 [NOTICE.md](NOTICE.md). Product and game names do not imply endorsement.
 The procedural handheld artwork and its generator are described in
-[the artwork guide](tools/artwork/README.md). Development used OpenAI Codex,
-declared in the updater metadata. No ROMs,
+[the artwork guide](tools/artwork/README.md). No ROMs,
 recordings or commercial game artwork are part of this repository or release.

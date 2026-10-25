@@ -79,8 +79,8 @@ class PublicPackage(unittest.TestCase):
                 {self.core + 'bitstream.rbf_r': b'unqualified'},
                 {'Platforms/_images/pdc.bin': b'unexpected-game-data'},
                 {self.core + 'core.json': release.encoded({'core': {'metadata': {}}})},
-                {self.core + 'updaters.json': release.encoded({'declare_ai': ['OpenAI Codex'], 'license': {'filename': 'LICENSE'}})},
-                {self.core + 'updaters.json': release.encoded({'declare_ai': ['OpenAI Codex'], 'previous': []})}]
+                {self.core + 'updaters.json': release.encoded({'license': {'filename': 'LICENSE'}})},
+                {self.core + 'updaters.json': release.encoded({'previous': []})}]
             for change in bad_inputs:
                 with self.subTest(change=list(change)), self.assertRaises((ValueError, KeyError)):
                     release.validate_release({**files, **change}, self.metadata)

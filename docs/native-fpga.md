@@ -202,7 +202,7 @@ Use a Docker volume for the Linux installation; the installer failed writing its
 
 ```sh
 bash tools/fpga/install-quartus.sh \
-  $HOME/Downloads/qinst-lite-linux-25.1std-1129.run \
+  /absolute/path/to/qinst-lite-linux-25.1std-1129.run \
   volume:pdc-quartus-25.1
 
 export PDC_QUARTUS_VOLUME=pdc-quartus-25.1
