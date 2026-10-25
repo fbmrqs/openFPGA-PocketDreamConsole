@@ -99,7 +99,7 @@ def release_files(old_core, package, metadata):
             'magic': 'APF_VER_1', 'data_slots': [{'id': 1, 'filename': stem + '.rom'}]}})
     files['Platforms/pdc.json'] = (package / 'Platforms/pdc.json').read_bytes()
     files['Platforms/_images/pdc.bin'] = (ROOT / 'release/pdc-platform.bin').read_bytes()
-    # The previous runtime's author icon is not reused.
+    files[prefix + 'icon.bin'] = (ROOT / 'release/author-icon.bin').read_bytes()
     for source, name in (
         ('LICENSE', 'LICENSE'), ('NOTICE.md', 'NOTICE.md'),
         ('third_party/veesem/LICENSE', 'veesem-ISC.txt'),
@@ -117,7 +117,7 @@ def validate_release(files, metadata):
     core = 'Cores/' + core_id + '/'
     allowed = {core + name for name in CORE_FILES} | {'Platforms/pdc.json'}
     allowed.add('Platforms/_images/pdc.bin')
-    allowed.add(core + 'README.md')
+    allowed |= {core + 'README.md', core + 'icon.bin'}
     allowed |= {f'Assets/pdc/{core_id}/{label}.json' for label in PROFILES.values()}
     allowed |= {core + 'licenses/' + name for name in (
         'LICENSE', 'NOTICE.md', 'veesem-ISC.txt', 'psram-MIT.txt',
@@ -125,6 +125,8 @@ def validate_release(files, metadata):
     if set(files) != allowed:
         raise ValueError('Archive contains missing or unexpected files; ROMs are never permitted.')
     validate_platform_image(files['Platforms/_images/pdc.bin'])
+    if len(files[core + 'icon.bin']) != 36 * 36 * 2:
+        raise ValueError('Author icon must be a 36 x 36 APF image.')
     for name, data in files.items():
         if name.endswith('.json'):
             json.loads(data)

@@ -58,7 +58,9 @@ class PublicPackage(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             files = release.release_files(*self.fixture(directory), self.metadata)
             self.assertNotIn(b'PRIVATE-GAME-MUST-NOT-SHIP', files.values())
-            self.assertFalse(any(name.endswith('icon.bin') for name in files))
+            # Only the piano author icon ships, never an older runtime icon.
+            self.assertEqual([name for name in files if name.endswith('icon.bin')], [self.core + 'icon.bin'])
+            self.assertEqual(files[self.core + 'icon.bin'], (release.ROOT / 'release/author-icon.bin').read_bytes())
             menu = json.loads(files[self.core + 'interact.json'])['interact']
             self.assertEqual(menu['variables'], [])
             archive = Path(directory) / 'release.zip'
