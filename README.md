@@ -28,7 +28,8 @@ and hardware edge case is cycle-perfect.
 
 The package declares Pocket firmware 1.1 or newer. Device testing used firmware
 2.7; use a current stable firmware for the sixteen selected display modes.
-Save states, sleep/resume and Dock output are not supported in this release.
+Dock output is supported, including HDMI video, audio, controller 1 and the
+display filters. Save states and sleep/resume are not supported in this release.
 
 ## Supported hardware profiles
 

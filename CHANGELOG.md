@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.0.0 — 2026-10-15
+## 1.0.0 — 2026-10-29
 
 - Prepare the first ROM-free GitHub release under `fbmrqs.PocketDreamConsole`.
 - Confirm PDC30 Pink, PDC50, PDC100, TMNT, Oui-Oui, Dora and VideoJet TV Games 1–4
@@ -16,8 +16,10 @@
   notices, updater metadata, contribution guidance and ROM-free CI checks.
 
 The FPGA binary is the unchanged hardware-confirmed build from source `16f3d84`.
-This release changes packaging and documentation only. Save states, sleep/resume,
-Dock output and unsupported hardware profiles remain deferred.
+This release changes packaging and documentation only. It enables Dock output,
+confirmed on the Dock with HDMI video, audio, controller 1 and every display
+filter, and adds a piano author icon. Save states, sleep/resume and unsupported
+hardware profiles remain deferred.
 
 ## Development builds
 

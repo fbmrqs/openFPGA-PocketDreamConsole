@@ -35,7 +35,8 @@ class PublicPackage(unittest.TestCase):
         old = package / 'Cores/Local.PocketDreamConsole'
         old.mkdir(parents=True)
         definitions = {
-            'core': {'metadata': {}, 'cores': [{'filename': 'bitstream.rbf_r'}]},
+            'core': {'metadata': {}, 'cores': [{'filename': 'bitstream.rbf_r'}],
+                     'framework': {'sleep_supported': False, 'dock': {'supported': False, 'analog_output': False}}},
             'video': {'display_modes': [{'id': hex(mode)} for mode in release.DISPLAY_MODES]},
             'input': {'controllers': [{'mappings': [{'name': 'A', 'key': 'pad_btn_b'},
                                                    {'name': 'B', 'key': 'pad_btn_a'}]}]},
@@ -61,6 +62,7 @@ class PublicPackage(unittest.TestCase):
             # Only the piano author icon ships, never an older runtime icon.
             self.assertEqual([name for name in files if name.endswith('icon.bin')], [self.core + 'icon.bin'])
             self.assertEqual(files[self.core + 'icon.bin'], (release.ROOT / 'release/author-icon.bin').read_bytes())
+            self.assertTrue(json.loads(files[self.core + 'core.json'])['core']['framework']['dock']['supported'])
             menu = json.loads(files[self.core + 'interact.json'])['interact']
             self.assertEqual(menu['variables'], [])
             archive = Path(directory) / 'release.zip'

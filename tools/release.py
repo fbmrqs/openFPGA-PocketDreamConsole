@@ -72,7 +72,7 @@ def verify_workspace(workspace, metadata):
     if digest(old_core / 'bitstream.rbf_r', 'sha256') != metadata['bitstream_sha256']:
         raise ValueError('Bitstream differs from the hardware-confirmed release baseline.')
     status = json.loads((workspace / 'diagnostic-build-status.json').read_text())
-    if status.get('state') != 'complete' or status.get('source_commit') != metadata['hardware_source_commit']:
+    if status.get('state') != 'complete' or status.get('source_commit') != metadata['workspace_source_commit']:
         raise ValueError('Workspace completion/source identity differs from the release baseline.')
     return old_core, package, receipt_hashes
 
@@ -86,6 +86,7 @@ def release_files(old_core, package, metadata):
         author=metadata['author'], shortname=metadata['shortname'],
         url='https://github.com/' + metadata['repository'],
         version=metadata['version'], date_release=metadata['date_release'])
+    definition['core']['framework']['dock']['supported'] = True
     files[prefix + 'core.json'] = encoded(definition)
     # Diagnostic readouts stay in the development packager; release menus are empty.
     files[prefix + 'interact.json'] = (ROOT / 'release/interact.json').read_bytes()
@@ -142,6 +143,9 @@ def validate_release(files, metadata):
     for key in ('author', 'shortname', 'version', 'date_release'):
         if definition['metadata'][key] != metadata[key]:
             raise ValueError(f'Release identity mismatch: {key}')
+    framework = definition['framework']
+    if not framework['dock']['supported'] or framework['dock']['analog_output'] or framework['sleep_supported']:
+        raise ValueError('Release must support digital Dock output without sleep or analog output.')
     if definition['metadata']['url'] != 'https://github.com/' + metadata['repository']:
         raise ValueError('Repository URL differs from release identity.')
     if hashlib.sha256(files[core + 'bitstream.rbf_r']).hexdigest() != metadata['bitstream_sha256']:

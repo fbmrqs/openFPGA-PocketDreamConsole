@@ -242,7 +242,7 @@ USB SD Access in Tools → Developer mounts the card over Pocket’s USB-C conne
 | Start | Pause |
 | Hold Select and Start | Reset to the PDC boot menu |
 
-Select the FPGA version under openFPGA → Pocket Dream Console and choose PDC30 Pink or PDC100. For physical verification, check both boot menus, start a game, move, test stereo sound and reset without reloading. Save states, sleep/resume and Dock output are not supported.
+Select the FPGA version under openFPGA → Pocket Dream Console and choose PDC30 Pink or PDC100. For physical verification, check both boot menus, start a game, move, test stereo sound and reset without reloading. Dock output is supported; save states and sleep/resume are not.
 
 ## Accuracy limits
 

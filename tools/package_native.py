@@ -161,7 +161,7 @@ def main():
         platform_ids=['pdc'], shortname=shortname, author='Local', url='',
         description='Pocket Dream Console FPGA core',
         version='0.2.1', date_release='2026-10-14')
-    definition['core']['framework']['dock']['supported'] = False
+    definition['core']['framework']['dock']['supported'] = True
     write_json(core / 'core.json', definition)
     for name in ('audio.json', 'video.json', 'interact.json', 'variants.json'):
         shutil.copy2(template / name, core / name)

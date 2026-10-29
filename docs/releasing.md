@@ -36,7 +36,10 @@ python3 tools/release.py --workspace build/native-pin-control-workspace
 
 The packager verifies current and frozen source against all required receipts,
 all four timing corners, the raw and reversed binary hashes, the completed
-workspace identity and private package hashes. It copies only an explicit
+workspace identity and private package hashes. The frozen workspace records its
+source as `workspace_source_commit`, the identifier from before the history was
+rewritten to remove a personal email address and `.mailmap`; RTL is unchanged
+between it and `hardware_source_commit`. It copies only an explicit
 public-file allowlist. Unexpected files, changed hardware or missing evidence
 stop release creation. The generated ZIP is read back and checked before success.
 
