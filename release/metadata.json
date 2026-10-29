@@ -4,7 +4,7 @@
   "shortname": "PocketDreamConsole",
   "version": "1.0.0",
   "date_release": "2026-10-29",
-  "hardware_source_commit": "16f3d842759f176581abed5c6fadd29ef3335536",
+  "hardware_source_commit": "4487ba4af2f73a0ab93d53c33449ce199a2515a8",
   "hardware_confirmed_date": "2026-10-15",
   "bitstream_sha256": "bdb979ce0c531a9c15ed3ad09c37243a09a8739bce585c5f73b8dc791d52e98f",
   "raw_rbf_sha256": "b7bff553bf58d7c615f8aa4c18fe6d0905c4c257d72debcb0a31657968eaa361",
