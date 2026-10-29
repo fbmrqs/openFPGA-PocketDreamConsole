@@ -153,7 +153,7 @@ def main():
             roms_passed=list(library.get('roms',{})),rom_failures=library.get('failures',{}))
         save('diagnostic-install-status.json',state='blocked',card=str(card),display_installed=False,
             core_failures=core_errors,timing_error=timing_error,roms_passed=list(library.get('roms',{})),rom_failures=library.get('failures',{}))
-        print('Build failed; exact results saved. '
+        print('Build failed; exact results saved for the hourly repair follow-up. '
               'No new core installed; the working core is preserved.',flush=True)
     else:
         save('diagnostic-build-status.json',state='complete',hardware_verified=False,rom_failures=library.get('failures',{}))
@@ -161,7 +161,7 @@ def main():
             display_installed=False,library_installed=library_installed,writes_flushed=installed,
             ejected=False,rom_failures=library.get('failures',{}))
         if not library.get('roms'):
-            print('No additional ROM passed; results saved.',flush=True)
+            print('No additional ROM passed; results saved for the hourly repair follow-up.',flush=True)
 
 
 if __name__=='__main__':
@@ -177,5 +177,5 @@ if __name__=='__main__':
         save('diagnostic-build-status.json',state='failed',reason=str(error))
         save('diagnostic-install-status.json',state='blocked',reason=str(error),
             display_install=json.loads((root/'diagnostic-display-install-status.json').read_text())if(root/'diagnostic-display-install-status.json').exists()else None)
-        print('Failure saved: '+str(error),flush=True)
+        print('Failure saved for the hourly repair follow-up: '+str(error),flush=True)
         raise
