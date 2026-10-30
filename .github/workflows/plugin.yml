@@ -1,0 +1,54 @@
+name: ROM preparation plugin
+on:
+  push:
+    paths: ['tools/pocket-plugin/**', 'tools/import_roms.py', 'tools/package.py', 'tools/rom_library.py', 'tools/release.py', 'tests/test_release.py', '.github/workflows/plugin.yml']
+  pull_request:
+    paths: ['tools/pocket-plugin/**', 'tools/import_roms.py', 'tools/package.py', 'tools/rom_library.py', 'tools/release.py', 'tests/test_release.py', '.github/workflows/plugin.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: '1.91.1'
+          targets: wasm32-wasip1
+          components: rustfmt, clippy
+      - run: cargo fmt --manifest-path tools/pocket-plugin/Cargo.toml --check
+      - run: cargo clippy --manifest-path tools/pocket-plugin/Cargo.toml --locked --all-targets -- -D warnings
+      - run: cargo test --manifest-path tools/pocket-plugin/Cargo.toml --locked
+      - run: python -m unittest discover -s tests -p test_release.py
+      - run: bash tools/pocket-plugin/build.sh
+      - run: python -m pip install -r tools/pocket-plugin/host-requirements.txt
+      - run: python tools/pocket-plugin/tests/wasm.py --wasm tools/pocket-plugin/target/release-assets/plugin.wasm
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pdc-rom-plugin
+          path: tools/pocket-plugin/target/release-assets/
+  compatibility:
+    needs: build
+    strategy:
+      matrix:
+        os: [macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: '1.91.1'
+      - run: cargo test --manifest-path tools/pocket-plugin/Cargo.toml --locked
+      - uses: actions/download-artifact@v4
+        with:
+          name: pdc-rom-plugin
+          path: plugin-assets
+      - run: python -m pip install -r tools/pocket-plugin/host-requirements.txt
+      - run: python tools/pocket-plugin/tests/wasm.py --wasm plugin-assets/plugin.wasm

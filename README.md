@@ -6,7 +6,7 @@ A native openFPGA core for Pocket Dream Console and VideoJet TV Games hardware.
 The μnSP CPU, SPG200 graphics, sound and board peripherals run in the FPGA.
 No software-emulation runtime or external BIOS is required.
 
-**Release: 1.0.0**
+**Release: 1.0.1**
 
 **Status:** full-speed gameplay, graphics, audio, A/B controls and sixteen display
 filters have been confirmed on a Pocket across ten ROM profiles. This is
@@ -21,8 +21,11 @@ and hardware edge case is cycle-perfect.
 2. Merge its `Assets`, `Cores` and `Platforms` folders into the root of your
    Pocket microSD card. Preserve existing folder contents; on macOS use **Merge**
    rather than replacing whole folders.
-3. Add your own supported dumps to `Assets/pdc/common/` using the
-   [ROM import instructions](docs/roms.md). **No ROMs are included.**
+3. Prepare your own supported dumps with the
+   [ROM-preparation plugin](https://github.com/fbmrqs/openFPGA-PocketDreamConsole-plugin).
+   Put raw dumps or ZIPs in `Assets/pdc/import/` and run the plugin; verified ROMs
+   appear in `Assets/pdc/common/`. The [Python importer](docs/roms.md) remains an
+   alternative. **No ROMs are included or downloaded.**
 4. Open **openFPGA → Pocket Dream Console → PocketDreamConsole**, then choose a
    game profile. Loading and startup-bank verification take a few seconds.
 
@@ -84,6 +87,7 @@ CPU/game timing is unchanged by the selection.
 ## Documentation and development
 
 - [ROM preparation and checksums](docs/roms.md)
+- [Updater ROM-preparation plugin source and tests](tools/pocket-plugin/README.md)
 - [Architecture, dependencies and validation](docs/building.md)
 - [Release procedure and updater submission](docs/releasing.md)
 - [Release and pupdate research](docs/release-research.md)

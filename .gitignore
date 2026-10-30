@@ -5,6 +5,7 @@
 __pycache__/
 *.py[cod]
 *.log
+/tools/pocket-plugin/target/
 
 # Local ROM dumps and generated FPGA/package binaries.
 *.bin

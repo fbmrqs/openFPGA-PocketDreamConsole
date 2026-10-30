@@ -1,0 +1,82 @@
+[
+  {
+    "key": "pdc100",
+    "label": "PDC100",
+    "source_size": 134217728,
+    "source_sha1": "cfb4be7877ec263d24063a004c56985db5c0f4e2",
+    "output_size": 67108864,
+    "output_sha256": "515c70025ff37180bfed86100afee88dd8051fc58b0428e3078937608b91f870"
+  },
+  {
+    "key": "pdc30",
+    "label": "PDC30 Pink",
+    "source_size": 16777216,
+    "source_sha1": "5b423d589358dd53a2e5765bcb94da2d44200e56",
+    "output_size": 16777216,
+    "output_sha256": "fc59f49b0f8bf71077633c447240e4a8a33ff22a0659758f67fe545c47c64349"
+  },
+  {
+    "key": "pdc50",
+    "label": "PDC50",
+    "source_size": 16777216,
+    "source_sha1": "81d2ff5af7b6dc5e1f9277b45f259762e7d24cce",
+    "output_size": 16777216,
+    "output_sha256": "67c7e353a1524f89d399c705464f7fdaccfadc76480e26c3a73001e95b33b729"
+  },
+  {
+    "key": "ouipdc",
+    "label": "Oui-Oui",
+    "source_size": 16777216,
+    "source_sha1": "de0695c240fdc2edc67694ceacaed093e6693767",
+    "output_size": 16777216,
+    "output_sha256": "9cc5322c74b3415e38073b6b53b19dd264602abdf65d6a97442f58f6c08c3f31"
+  },
+  {
+    "key": "tmntpdc",
+    "label": "Teenage Mutant Ninja Turtles",
+    "source_size": 8388608,
+    "source_sha1": "7620f1b7aeaec8032faa8eb7552f775e8d6d14ba",
+    "output_size": 8388608,
+    "output_sha256": "dabd9b5bbc1a2e40c094c7168280909991059d2e2d2d88ce74a09e5252f5b540"
+  },
+  {
+    "key": "dorapdc",
+    "label": "Dora",
+    "source_size": 8388608,
+    "source_sha1": "b6ac8ea186d7c624451dd6121932cecb38c1f25f",
+    "output_size": 8388608,
+    "output_sha256": "fa66b16817d284de808189fc07c94c8a7c673a1f28c3610659c4e2c69f8c5b24"
+  },
+  {
+    "key": "vjpp1",
+    "label": "VideoJet TV Games 1",
+    "source_size": 2097152,
+    "source_sha1": "3cf6fddcfdd1f858e775976f690b32deef1de67f",
+    "output_size": 8388608,
+    "output_sha256": "4cab49d2fbb60aff8f0301420a44c6da7914eb7c3dbf2f7c33430949536e824d"
+  },
+  {
+    "key": "vjpp2",
+    "label": "VideoJet TV Games 2",
+    "source_size": 4194304,
+    "source_sha1": "9b537205808c502cf872e62f9701357ef8e28f3c",
+    "output_size": 8388608,
+    "output_sha256": "9f2b687ec8466f106c54740a474c554849ad1dffdf198de039b7565d66c9ca16"
+  },
+  {
+    "key": "vjpp3",
+    "label": "VideoJet TV Games 3",
+    "source_size": 4194304,
+    "source_sha1": "59279e54e5d9ac2f956241e78dffe526b5de14fd",
+    "output_size": 8388608,
+    "output_sha256": "79979d711bb259f497531f7e575f6caae7b33f0eb63319130841a7832acd7110"
+  },
+  {
+    "key": "vjpp4",
+    "label": "VideoJet TV Games 4",
+    "source_size": 2097152,
+    "source_sha1": "0ffb606d4ac93da27a671b369800ea71e68452f3",
+    "output_size": 8388608,
+    "output_sha256": "8539c747d98438a8f49cca17bdeb2c3b79fa3ae22dd56566634f29db69131d49"
+  }
+]

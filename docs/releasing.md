@@ -1,8 +1,8 @@
 # Preparing a release
 
-The canonical repository is `fbmrqs/openFPGA-PocketDreamConsole`. It is private
-during preparation. Publishing a draft or changing repository visibility is a
-separate maintainer action; updater inclusion is not yet requested.
+The canonical repository is `fbmrqs/openFPGA-PocketDreamConsole`. It is public;
+the Library submission is tracked in issue 1887. Publish plugin assets before a
+core package that recommends them.
 
 ## Artifact contract
 
@@ -25,7 +25,7 @@ The installable asset is distinct from GitHub's automatic source downloads.
 
 1. Update `release/metadata.json`, the changelog and release notes deliberately.
    Keep the namespace stable after publication. Version metadata and the tag
-   must agree (`1.0.0` and `v1.0.0`).
+   must agree (`1.0.1` and `v1.0.1`).
 2. Run `make check-release`. Inspect `git diff`, check notices and commit changes.
 3. Use the frozen workspace containing the qualified FPGA, scene and library
    evidence. No new compile is required when hardware inputs are unchanged.
@@ -53,6 +53,25 @@ the draft while private. Confirm that a clean clone passes `make check-release`.
 ROMs and dependency/build directories must be absent from all pushed history.
 Do not upload any `pocket-dc-native-library.zip` or other private test package.
 
+## Metadata-only patch releases
+
+For a metadata patch, use the exact published baseline ZIP and build information
+pinned in `release/metadata.json`:
+
+```sh
+python3 tools/release.py --baseline /path/to/downloaded-baseline --output dist/release-1.0.1
+```
+
+This separate mode preserves the original qualification records. It checks both
+published asset hashes, every original ZIP entry against build-info, unchanged
+hardware identity, a newer patch version, and the complete source delta against
+the baseline packaging commit. Only documentation, plugin source and metadata
+packaging changes are allowed. Only `core.json` version/date, its README and the
+plugin recommendation can differ in the installable ZIP. The build information
+explicitly identifies the original qualification release; it makes no new FPGA
+or current diagnostic-tool qualification claim. The strict workspace build mode
+and original receipts are unchanged.
+
 ## Public launch and pupdate
 
 After deciding to publish, change visibility and publish the draft. Submit the
@@ -60,10 +79,17 @@ Library [Add Core form](https://github.com/openfpga-library/analogue-pocket/issu
 with repository `fbmrqs/openFPGA-PocketDreamConsole` and asset filter
 `^fbmrqs\.PocketDreamConsole_.*\.zip$`. No submission has been sent automatically.
 
-The release has no `updaters.json`. Old Local identities are deliberately not automatic replacements:
+Version 1.0.1 includes a validated plugins-only `updaters.json` recommending
+`fbmrqs/openFPGA-PocketDreamConsole-plugin`. Publish a usable plugin release with
+individual `plugin.wasm` and `plugin.json` assets before shipping this metadata;
+follow [the plugin build and test instructions](../tools/pocket-plugin/README.md).
+Version the core metadata patch deliberately and preserve existing v1.0.0 assets.
+The bitstream stays unchanged when its qualified dependencies are unchanged.
+
+Old Local identities are deliberately not automatic replacements:
 the inspected updater moves the old asset directory after installing the new
 one, which can collide with the launch-profile directory already in the ZIP.
-If an `updaters.json` is added later, do not give it `license.filename`: that field requests an activation key, not an
+Do not give `updaters.json` a `license.filename`: that field requests an activation key, not an
 open-source license notice. Both manual and updater installs can leave old Local
 entries in place. Back them up before removing their `Cores/Local.*` and matching
 `Assets/pdc/Local.*` directories, and preserve `Assets/pdc/common/`. Remove only

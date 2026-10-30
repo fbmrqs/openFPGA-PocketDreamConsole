@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.0.1 — 2026-10-30
+
+- Implement an offline shared updater plugin for preparing/checking the ten
+  supported ROM profiles, including PDC100 trimming and VideoJet padding.
+- Prepare and verify automatically on normal runs, including unattended pupdate;
+  retain confirmation for unfinished-file cleanup and retry automatically after it.
+- Add release-built WASM checks and strict plugins-only recommendation metadata.
+  The core update changes packaging and instructions; its FPGA binary is
+  byte-identical to v1.0.0. Existing v1.0.0 assets remain available unchanged.
+
 ## 1.0.0 — 2026-10-29
 
 - Prepare the first ROM-free GitHub release under `fbmrqs.PocketDreamConsole`.

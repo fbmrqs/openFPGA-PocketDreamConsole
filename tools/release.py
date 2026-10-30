@@ -77,6 +77,13 @@ def verify_workspace(workspace, metadata):
     return old_core, package, receipt_hashes
 
 
+def release_readme(metadata):
+    readme = (ROOT / 'README.md').read_text()
+    base_url = 'https://github.com/' + metadata['repository'] + '/blob/v' + metadata['version'] + '/'
+    return re.sub(r'\]\((?!https?://)([^)]+)\)',
+                  lambda match: '](' + base_url + match[1] + ')', readme).encode()
+
+
 def release_files(old_core, package, metadata):
     core_id = metadata['author'] + '.' + metadata['shortname']
     prefix = 'Cores/' + core_id + '/'
@@ -90,11 +97,9 @@ def release_files(old_core, package, metadata):
     files[prefix + 'core.json'] = encoded(definition)
     # Diagnostic readouts stay in the development packager; release menus are empty.
     files[prefix + 'interact.json'] = (ROOT / 'release/interact.json').read_bytes()
-    readme = (ROOT / 'README.md').read_text()
-    base_url = 'https://github.com/' + metadata['repository'] + '/blob/v' + metadata['version'] + '/'
-    readme = re.sub(r'\]\((?!https?://)([^)]+)\)',
-                    lambda match: '](' + base_url + match[1] + ')', readme)
-    files[prefix + 'README.md'] = readme.encode()
+    files[prefix + 'README.md'] = release_readme(metadata)
+    files[prefix + 'updaters.json'] = encoded({
+        'plugins': ['https://github.com/' + metadata['repository'] + '-plugin']})
     for stem, label in PROFILES.items():
         files[f'Assets/pdc/{core_id}/{label}.json'] = encoded({'instance': {
             'magic': 'APF_VER_1', 'data_slots': [{'id': 1, 'filename': stem + '.rom'}]}})
@@ -113,12 +118,67 @@ def release_files(old_core, package, metadata):
     return files
 
 
+def metadata_patch(baseline, metadata, source_root=ROOT):
+    """Change only version/date, README and plugin recommendation in a pinned release."""
+    pin = metadata['metadata_baseline']
+    if Path(pin['archive']).name != pin['archive']:
+        raise ValueError('Baseline archive must be a filename.')
+    archive = baseline / pin['archive']
+    info_path = baseline / 'build-info.json'
+    if (digest(archive, 'sha256') != pin['archive_sha256'] or
+            digest(info_path, 'sha256') != pin['build_info_sha256']):
+        raise ValueError('Published baseline hashes differ from the pinned release.')
+    info = json.loads(info_path.read_text())
+    for key in ('repository', 'author', 'shortname', 'hardware_source_commit',
+                'workspace_source_commit', 'bitstream_sha256', 'raw_rbf_sha256'):
+        if info[key] != metadata[key]:
+            raise ValueError(f'Metadata patch changes qualified identity: {key}')
+    old_version, new_version = info['version'].split('.'), metadata['version'].split('.')
+    if (len(old_version) != 3 or len(new_version) != 3 or
+            old_version[:2] != new_version[:2] or int(new_version[2]) <= int(old_version[2])):
+        raise ValueError('Metadata-only releases require an increasing patch version.')
+    if (info.get('roms_included') is not False or info.get('diagnostic_menu') is not False or
+            info.get('qualified_profiles') != list(PROFILES) or
+            not info.get('validation_receipt_sha256')):
+        raise ValueError('Baseline is not the complete ROM-free qualified release.')
+    revision = info['packaging_commit']
+    if not re.fullmatch(r'[0-9a-f]{40}', revision):
+        raise ValueError('Invalid baseline source revision.')
+    changed = subprocess.check_output(['git', '-C', str(source_root), 'diff',
+                                       '--name-only', revision, '--'], text=True).splitlines()
+    allowed = {'.gitignore', 'README.md', 'CHANGELOG.md', 'release/metadata.json',
+               'tools/release.py', 'tests/test_release.py', '.github/workflows/plugin.yml'}
+    if any(name not in allowed and not name.startswith(('docs/', 'tools/pocket-plugin/'))
+           for name in changed):
+        raise ValueError('Source changes exceed documentation, plugin and metadata packaging scope.')
+    with zipfile.ZipFile(archive) as zipped:
+        entries = zipped.infolist()
+        if (len({entry.filename for entry in entries}) != len(entries) or
+                sum(entry.file_size for entry in entries) > 128 * 1024 * 1024):
+            raise ValueError('Invalid baseline ZIP inventory or size.')
+        original = {entry.filename: zipped.read(entry) for entry in entries}
+    if {name: hashlib.sha256(data).hexdigest() for name, data in original.items()} != info['files']:
+        raise ValueError('Baseline ZIP contents differ from its published build information.')
+    core = 'Cores/' + metadata['author'] + '.' + metadata['shortname'] + '/'
+    definition = json.loads(original[core + 'core.json'])
+    for key in ('author', 'shortname', 'version', 'date_release'):
+        if definition['core']['metadata'][key] != info[key]:
+            raise ValueError('Baseline core identity differs from its build information.')
+    definition['core']['metadata'].update(version=metadata['version'], date_release=metadata['date_release'])
+    files = {**original, core + 'core.json': encoded(definition),
+             core + 'README.md': release_readme(metadata),
+             core + 'updaters.json': encoded({
+                 'plugins': ['https://github.com/' + metadata['repository'] + '-plugin']})}
+    validate_release(files, metadata)
+    return files, info
+
+
 def validate_release(files, metadata):
     core_id = metadata['author'] + '.' + metadata['shortname']
     core = 'Cores/' + core_id + '/'
     allowed = {core + name for name in CORE_FILES} | {'Platforms/pdc.json'}
     allowed.add('Platforms/_images/pdc.bin')
-    allowed |= {core + 'README.md', core + 'icon.bin'}
+    allowed |= {core + 'README.md', core + 'icon.bin', core + 'updaters.json'}
     allowed |= {f'Assets/pdc/{core_id}/{label}.json' for label in PROFILES.values()}
     allowed |= {core + 'licenses/' + name for name in (
         'LICENSE', 'NOTICE.md', 'veesem-ISC.txt', 'psram-MIT.txt',
@@ -131,11 +191,18 @@ def validate_release(files, metadata):
     for name, data in files.items():
         if name.endswith('.json'):
             json.loads(data)
+    if json.loads(files[core + 'updaters.json']) != {
+            'plugins': ['https://github.com/' + metadata['repository'] + '-plugin']}:
+        raise ValueError('Updater metadata must contain only the canonical ROM-preparation plugin.')
     for name in CORE_FILES:
         if name.endswith('.json'):
             key = name.removesuffix('.json')
             if json.loads(files[core + name])[key].get('magic') != 'APF_VER_1':
                 raise ValueError(f'Invalid APF definition: {name}')
+    slots = json.loads(files[core + 'data.json'])['data']['data_slots']
+    rom_slots = [slot for slot in slots if slot.get('id') == 1]
+    if len(rom_slots) != 1 or rom_slots[0].get('size_maximum') != '0x4000000':
+        raise ValueError('ROM loader limit must remain the qualified 64 MiB.')
     menu = json.loads(files[core + 'interact.json'])['interact']
     if menu != {'magic': 'APF_VER_1', 'variables': [], 'messages': []}:
         raise ValueError('Release contains diagnostic settings.')
@@ -174,7 +241,9 @@ def write_archive(path, files):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--workspace', type=Path, required=True)
+    source = parser.add_mutually_exclusive_group(required=True)
+    source.add_argument('--workspace', type=Path)
+    source.add_argument('--baseline', type=Path, help='directory containing the pinned published ZIP and build-info.json for a metadata-only patch')
     parser.add_argument('--output', type=Path, default=ROOT / 'dist/release')
     args = parser.parse_args()
     if subprocess.check_output(['git', '-C', str(ROOT), 'status', '--porcelain'], text=True).strip():
@@ -182,8 +251,12 @@ def main():
     metadata = json.loads((ROOT / 'release/metadata.json').read_text())
     if not re.fullmatch(r'[A-Za-z0-9_-]+/[A-Za-z0-9_.-]+', metadata['repository']):
         raise ValueError('Invalid repository identity.')
-    old_core, package, receipts = verify_workspace(args.workspace.resolve(), metadata)
-    files = release_files(old_core, package, metadata)
+    if args.baseline:
+        files, previous = metadata_patch(args.baseline.resolve(), metadata)
+        receipts = previous['validation_receipt_sha256']
+    else:
+        old_core, package, receipts = verify_workspace(args.workspace.resolve(), metadata)
+        files = release_files(old_core, package, metadata)
     args.output.mkdir(parents=True, exist_ok=True)
     name = f"{metadata['author']}.{metadata['shortname']}_{metadata['version']}_{metadata['date_release']}.zip"
     archive = args.output / name
@@ -195,6 +268,9 @@ def main():
             'diagnostic_menu': False, 'qualified_profiles': list(PROFILES),
             'validation_receipt_sha256': receipts,
             'files': {name: hashlib.sha256(data).hexdigest() for name, data in sorted(files.items())}}
+    if args.baseline:
+        info.update(release_type='metadata-only', qualification_from_release='v' + previous['version'],
+                    baseline_packaging_commit=previous['packaging_commit'])
     info_path = args.output / 'build-info.json'
     info_path.write_bytes(encoded(info))
     (args.output / 'SHA256SUMS').write_text(''.join(

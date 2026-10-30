@@ -19,6 +19,24 @@ locally, copy the resulting `.rom` files into the card’s `Assets/pdc/common/`.
 Only launch profiles whose corresponding ROM you have supplied. The ROM-free ZIP
 contains all ten launcher JSONs, so a missing file produces a load error.
 
+## Updater plugin
+
+Install the [ROM-preparation plugin](https://github.com/fbmrqs/openFPGA-PocketDreamConsole-plugin)
+through pupdate or Pocket Sync. Its source and detailed instructions are in
+[tools/pocket-plugin](../tools/pocket-plugin/README.md). The Python importer above
+remains available as an alternative.
+The plugin automatically prepares raw dumps or ZIPs placed in `Assets/pdc/import/`,
+verifies installed outputs, and preserves originals. Normal runs require no
+per-ROM choices and can run during pupdate's Update All after one-time opt-in.
+Its build, automated checks and
+remaining updater/device release checks are documented with the source.
+
+For a PDC100 “file too large” error, check the prepared file's size:
+`pdc100.rom` must be **67,108,864 bytes (64 MiB)**. The supported physical dump is
+134,217,728 bytes (128 MiB), so merely renaming it does not prepare it. Keep the
+original, then use the importer to create the correct output. A 64 MiB file with
+the wrong hash is not made valid by its size alone.
+
 ## Exact supported revisions
 
 | Profile | Raw size (bytes) | Source SHA-1 | Prepared filename |

@@ -1,0 +1,5 @@
+{
+  "name": "Pocket Dream Console ROM preparation",
+  "description": "Automatically prepares and checks supported local Pocket Dream Console and VideoJet ROM dumps. Put raw dumps or ZIPs in Assets/pdc/import, then run the plugin. No downloads; originals are preserved.",
+  "allowed_hosts": []
+}
