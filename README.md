@@ -6,7 +6,7 @@ A native openFPGA core for Pocket Dream Console and VideoJet TV Games hardware.
 The μnSP CPU, SPG200 graphics, sound and board peripherals run in the FPGA.
 No software-emulation runtime or external BIOS is required.
 
-**Release: 1.0.0** (private draft).
+**Release: 1.0.0**
 
 **Status:** full-speed gameplay, graphics, audio, A/B controls and sixteen display
 filters have been confirmed on a Pocket across ten ROM profiles. This is
